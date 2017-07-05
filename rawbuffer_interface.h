@@ -37,8 +37,8 @@ struct name{ \
     static const rawbuf_uint aligned_4x = prev_type::aligned_4x + 1;\
     static const rawbuf_uint aligned_8x = prev_type::aligned_8x; \
     static const rawbuf_uint aligned_16x = prev_type::aligned_16x; \
-    rawbuf_uint field_offset[field_count]; \
     rawbuf_uint this_offset; \
+    rawbuf_uint field_offset[field_count]; \
 \
     template <typename T> \
     struct required_members_iterator<T, required_field_count>{ \
