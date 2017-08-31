@@ -5,7 +5,10 @@
 
 #include <stdlib.h>
 
-#define RAW_BUF_ALIGN(offset, size)  (((offset) + (size) -1 )&(~((size) - 1)) )
+#define RAW_BUF_ALIGN(offset, size)  ( ((offset) + (size) -1 ) & ((~((size) - 1))) )
+#define RAW_BUF_ALIGN_TYPE(offset, size, type)  ( ((offset) + (size) -1 ) & ((type)(~((size) - 1))) )
+#define RAW_BUF_IS_ALIGNED_PTR(ptr, size)  ( (((size_t)ptr) & ((size) - 1)) == 0  )
+
 
 #define RAW_BUF_JOIN2(x, y) x##y
 #define RAW_BUF_JOIN(x, y) RAW_BUF_JOIN2(x, y)
@@ -15,7 +18,13 @@
 
 #define RAW_BUF_STRING2(x) #x
 #define RAW_BUF_STRING(x) RAW_BUF_STRING2(x)
+#define RAW_BUF_ERROR_MSG(x) x " File: " __FILE__ ", line: " RAW_BUF_STRING(__LINE__) "."
 
+
+#define RAW_BUF_INFO2(input_type, name)  " Type: " RAW_BUF_STRING(input_type) ", name: " RAW_BUF_STRING(name)  "."
+#define RAW_BUF_INFO(input_type, name) RAW_BUF_INFO2(input_type, name)
+
+#define RAW_BUF_OFFSET_OF(s, m)  ((size_t)&(((s *)64)->m) - 64)
 
 namespace rawbuf{
 
@@ -24,6 +33,23 @@ namespace rawbuf{
         rawbuf_int _[N];
     };
     typedef n_int<2> two_int;
+
+    template<typename T> two_int is_castable_tester(T);
+    template<typename T> char is_castable_tester(...);
+
+    template<bool result>
+    struct result_check;
+
+
+    template<>
+    struct result_check<true>{
+        typedef int type;
+    };
+
+    template <typename T>
+    struct is_num{
+        static const bool result = sizeof(is_castable_tester<T>(0)) != sizeof(char);
+    };
 
     template<typename T> two_int is_struct_tester(rawbuf_int T::*);
     template<typename T> char is_struct_tester(...);
@@ -65,15 +91,33 @@ namespace rawbuf{
         static const rawbuf_uint less      = (lhs > rhs) ? rhs : lhs;
     };
 
+    template <typename lhs, typename rhs, bool lhs_larger = (sizeof(lhs) > sizeof(rhs))>
+    struct rawbuf_max_type{
+        typedef lhs type;
+    };
+
+    template <typename lhs, typename rhs>
+    struct rawbuf_max_type<lhs, rhs, false>{
+        typedef rhs type;
+    };
+
+    template <typename lhs, typename rhs>
+    struct rawbuf_type_equal{
+        const static bool result = false;
+    };
+
+    template <typename lhs>
+    struct rawbuf_type_equal<lhs, lhs>{
+        const static bool result = true;
+    };
+
     template<unsigned int N>
     struct struct_int : struct_int<N - 1> {};
     template<>
     struct struct_int<0> {};
 
-    enum ctrl_cmd{
-        allocate = 0
-    };
-#define RAW_BUF_INDEXER(counter) (sizeof(*counter((rawbuf::struct_int<MAX_MEMBER_COUNT>*)0)) - sizeof(*counter((void*)0)))
+
+#define RAW_BUF_INDEXER(counter) (sizeof(*counter((rawbuf::struct_int<MAX_FIELDS_COUNT>*)0)) - sizeof(*counter((void*)0)))
 
 #define RAW_BUF_INCREASER(counter, name)  static const int name = RAW_BUF_INDEXER(counter); \
     static char (*counter(rawbuf::struct_int<sizeof(*counter((void*)0)) + name + 1>*))[sizeof(*counter((void*)0)) + name + 1]
