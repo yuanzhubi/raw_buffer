@@ -9,6 +9,15 @@ namespace rawbuf{
     struct json_output{
 	private:
 		json_output& operator = (const json_output& arg);
+		void prefix_init(int depth){
+            if(this->current_depth == depth){              
+                this->the_stream << ", " ;              
+            } else if(this->current_depth > depth){
+
+                this->the_stream << this->ender_stack[depth] << ",\n" ;
+            } 
+			this->current_depth = depth;
+        }
 	public:
         M& the_stream;
         int current_depth;
@@ -26,16 +35,6 @@ namespace rawbuf{
             this->the_stream << "}\n";
         }
 
-        void prefix_init(int depth){
-            if(this->current_depth == depth){              
-                this->the_stream << ", " ;              
-            } else if(this->current_depth > depth){
-
-                this->the_stream << this->ender_stack[depth] << ",\n" ;
-            } 
-			this->current_depth = depth;
-        }
-
         //rawbuf_packet
         template<typename T>
         bool operator()(T* arg, const char* name, int depth, typename rawbuf::result_check<rawbuf::is_rawbuf_struct<T>::result>::type *p = 0) {(void)p;
@@ -46,9 +45,8 @@ namespace rawbuf{
             if(arg == 0){
                 this->the_stream << "null";
             } else{
-                this->the_stream << "{\n" ;
+				this->the_stream << '{' ;
                 this->ender_stack[this->current_depth] = '}';
-                ++this->current_depth; //this->is_begin = true;
             }
             return true;
         }
@@ -93,12 +91,11 @@ namespace rawbuf{
             } else{
                 this->the_stream << '[' ;
                 this->ender_stack[this->current_depth] = ']';
-                ++this->current_depth; //this->is_begin = true;
             }
             return true;
         }
 
-        //char array, and we will escape some character and put '\0' at end of the 
+        //char array, and we will escape some character and put '\0' at end 
         bool operator()(char* arg, size_t the_size, const char* name, int depth) {
             prefix_init(depth);
             if(name != 0){

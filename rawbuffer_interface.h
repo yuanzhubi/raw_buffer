@@ -20,10 +20,6 @@ struct rawbuf_cmd{
     };
 
     enum visit_array_cmd{
-        length = 0,
-		size = 1,
-		array_length = 2,
-		array_size = 3,
 		get_size = 4, 
 		get_array_size = 5 //Either is ok. You can choose any name. The author can not satisify all the users..
     };
@@ -179,8 +175,9 @@ public:\
             T* that = *this; \
             typename T::offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
             if(*foffset != 0){ \
-               *(input_type*)((char*)foffset + *foffset ) = src; \
-               return (input_type*)((char*)foffset + *foffset ); \
+				input_type* result = (input_type*)(((char*)foffset) + *foffset ); \
+				*result = src; \
+				return result; \
             }\
             return this->writer->append(&src, foffset); \
         } \
@@ -286,7 +283,7 @@ public:\
         static const rawbuf_uint aligned_8x = parent_type::aligned_8x + (rawbuf::rawbuf_property<array_count_type>::alignment_result == 8 ? 0:1); \
         template<typename This, typename Func> \
         static void iterate(This& this_instance, Func& func_instance){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::array_size>() ; \
+            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_size>() ; \
 			if(psize != 0) {\
                 input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
                 if(func_instance(data, *psize)){ \
@@ -303,7 +300,7 @@ public:\
         } \
         template<typename This, typename Func> \
         static void iterate_with_name(This& this_instance, Func& func_instance){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::array_size>() ; \
+            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_size>() ; \
 			if(psize != 0) {\
                 input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
                 if(func_instance(data, *psize, #name)){ \
@@ -320,7 +317,7 @@ public:\
         } \
         template<typename This, typename Func> \
         static void iterate_with_depth(This& this_instance, Func& func_instance, int depth){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::array_size>() ; \
+            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_size>() ; \
 			if(psize != 0) {\
                 input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
                 if(func_instance(data, *psize, #name, depth)){ \
@@ -338,7 +335,7 @@ public:\
 		template<typename M> \
         static void copy(const M& the_src, const rawbuf_writer<T>& packet){ \
             const T& src = the_src; \
-			array_count_type* psize = src->name<rawbuf_struct_type::array_size>() ; \
+			array_count_type* psize = src->name<rawbuf_struct_type::get_size>() ; \
 			if(psize != 0 && *psize != 0 ){ \
 				 input_type* ptr = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
 							rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
@@ -351,7 +348,7 @@ public:\
         } \
     }; \
     input_type* name() const{ \
-		array_count_type *psize = this->name<rawbuf_struct_type::array_size>() ; \
+		array_count_type *psize = this->name<rawbuf_struct_type::get_size>() ; \
         if(psize != 0 && *psize != 0 ){ \
             return (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
                         rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
@@ -360,7 +357,7 @@ public:\
     } \
 	template<typename M> /*M can only be c_str*/ \
     input_type* name() const{ \
-		array_count_type *psize = this->name<rawbuf_struct_type::array_size>() ; \
+		array_count_type *psize = this->name<rawbuf_struct_type::get_size>() ; \
         if(psize != 0 && *psize != 0 ){ \
 			input_type* result = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
                         rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
@@ -416,7 +413,7 @@ public:\
     struct rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name)> : public rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name) - 1 >{\
 		typedef typename T::offset_type offset_type;\
         input_type* name() { \
-            array_count_type *psize = this->name<rawbuf_struct_type::array_size>() ; \
+            array_count_type *psize = this->name<rawbuf_struct_type::get_size>() ; \
             if(psize == 0 || *psize == 0){ \
                 return 0; \
             } \
@@ -430,7 +427,7 @@ public:\
         } \
 		template<typename M> /*M can only be c_str*/ \
 		input_type* name() const{ \
-			array_count_type *psize = this->name<rawbuf_struct_type::array_size>() ; \
+			array_count_type *psize = this->name<rawbuf_struct_type::get_size>() ; \
             if(psize == 0 || *psize == 0){ \
                 return 0; \
             } \
@@ -696,14 +693,17 @@ public:\
         static const rawbuf_uint aligned_8x = parent_type::aligned_8x + (rawbuf::rawbuf_property<array_count_type>::alignment_result == 8 ? 0:1); \
         template<typename This, typename Func> \
         static void iterate(This& this_instance, Func& func_instance){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::array_size>(); \
+            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_size>(); \
 			if(psize != 0) {\
                 input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
 				if(func_instance(data, *psize)){ \
 					size_t data_real_size = sizeof(input_type) + (data->_.real_optional_fields_count - input_type::optional_fields_count) * sizeof(input_type::offset_type); \
 					char* pdata = (char*)data; \
                     for(array_count_type i = 0; i < *psize; ++i, pdata+=data_real_size){ \
-						((input_type*)pdata)->iterate(func_instance); \
+						bool result = func_instance(((input_type*)pdata), 0); /*{}*/\
+						if(result){ \
+							((input_type*)pdata)->iterate(func_instance); \
+						}\
                     }\
                 } \
             }else{ \
@@ -715,14 +715,17 @@ public:\
         } \
         template<typename This, typename Func> \
         static void iterate_with_name(This& this_instance, Func& func_instance){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::array_size>() ; \
+            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_size>() ; \
 			if(psize != 0) {\
                 input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
                 if(func_instance(data, *psize, #name)){ \
                     size_t data_real_size = sizeof(input_type) + (data->_.real_optional_fields_count - input_type::optional_fields_count) * sizeof(input_type::offset_type); \
 					char* pdata = (char*)data; \
                     for(array_count_type i = 0; i < *psize; ++i, pdata+=data_real_size){ \
-						((input_type*)pdata)->iterate_with_name(func_instance); \
+						bool result = func_instance(((input_type*)pdata), 0); /*{}*/\
+						if(result){ \
+							((input_type*)pdata)->iterate_with_name(func_instance); \
+						}\
                     }\
                 } \
             }else{ \
@@ -734,14 +737,17 @@ public:\
         } \
         template<typename This, typename Func> \
         static void iterate_with_depth(This& this_instance, Func& func_instance, int depth){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::array_size>() ; \
+            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_size>() ; \
 			if(psize != 0) {\
                 input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
                 if(func_instance(data, *psize, #name, depth)){ \
                     size_t data_real_size = sizeof(input_type) + (data->_.real_optional_fields_count - input_type::optional_fields_count) * sizeof(input_type::offset_type); \
 					char* pdata = (char*)data; \
                     for(array_count_type i = 0; i < *psize; ++i, pdata+=data_real_size){ \
-						((input_type*)pdata)->iterate_with_depth(func_instance, depth + 1); \
+						bool result = func_instance(((input_type*)pdata), 0, depth + 1); /*{}*/\
+						if(result){ \
+							((input_type*)pdata)->iterate_with_depth(func_instance, depth + 2); \
+						}\
                     }\
                 } \
             }else{ \
@@ -754,7 +760,7 @@ public:\
 		template<typename M> \
         static void copy(const M& the_src, const rawbuf_writer<T>& packet){ \
             const T& src = the_src; \
-			array_count_type* psize = src->name<rawbuf_struct_type::array_size>() ; \
+			array_count_type* psize = src->name<rawbuf_struct_type::get_size>() ; \
 			if(psize != 0 && *psize != 0 ){ \
 				input_type* ptr = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
 							rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
@@ -767,7 +773,7 @@ public:\
         } \
     }; \
     input_type* name() const{ \
-		array_count_type *psize = this->name<rawbuf_struct_type::array_size>() ; \
+		array_count_type *psize = this->name<rawbuf_struct_type::get_size>() ; \
         if(psize != 0 && *psize != 0 ){ \
             return (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
                         rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
@@ -843,7 +849,7 @@ public:\
     struct rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name)> : public rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name) - 1 >{\
 		typedef typename T::offset_type offset_type;\
         rawbuf_reader_iterator<input_type> name() { \
-            array_count_type *psize = this->name<rawbuf_struct_type::array_size>() ; \
+            array_count_type *psize = this->name<rawbuf_struct_type::get_size>() ; \
 			rawbuf_reader_iterator<input_type> real_result; \
             if(psize == 0 || *psize == 0){ \
 				real_result.reset(); \
@@ -875,14 +881,14 @@ public:\
                 this->invalidate(RAW_BUF_ERROR_MSG("Optional field out of bound!" RAW_BUF_INFO(input_type, name))); \
                 return 0; \
             } \
-            if(!RAW_BUF_IS_ALIGNED_PTR(psize,rawbuf::rawbuf_property<array_count_type>::alignment_result)){	    /*2. The location of the length of the optional field should be aligned.*/	\
+            if(!RAW_BUF_IS_ALIGNED_PTR(psize, rawbuf::rawbuf_property<array_count_type>::alignment_result)){	    /*2. The location of the length of the optional field should be aligned.*/	\
                 this->invalidate(RAW_BUF_ERROR_MSG("Optional field is not aligned!" RAW_BUF_INFO(input_type, name))); \
                 return 0; \
             }\
             return psize; \
 		} \
 		bool valid(){ \
-			array_count_type* psize = this->name<rawbuf_struct_type::array_size>() ; \
+			array_count_type* psize = this->name<rawbuf_struct_type::get_size>() ; \
 			if(!(*this)){ \
 				return false; \
 			}\

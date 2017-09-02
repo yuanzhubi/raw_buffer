@@ -147,6 +147,7 @@
         helper_type* operator->() const {
 			return (helper_type*)this;
 		}
+		inline T& operator *() const {return *(T*)(this->writer->data_ptr + this->offset);}
         inline T* operator()() const {return (T*)(this->writer->data_ptr + this->offset);}
         inline operator T* () const {return (T*)(this->writer->data_ptr + this->offset);}
         operator bool() const {return this->writer != 0;}
@@ -232,6 +233,7 @@
         helper_type* operator->() const {
 			return (helper_type*)(this);
 		}
+		inline T& operator *() const {return *(T*)(this->data_ptr);}
         inline T* operator()() const {return (T*)(this->data_ptr);}
         inline operator T* () const {return (T*)(this->data_ptr);}
         operator bool() const {return this->data_ptr != 0;}
@@ -290,6 +292,13 @@
 	bool rawbuf_check(rawbuf_reader<T> &r){
 		typedef typename T::template rawbuf_reader_helper<T, -1> init_helper_type;
 		return ((init_helper_type&)r).valid();
+	}
+
+	template <typename T>
+	bool rawbuf_check(void* buffer, size_t length){
+		rawbuf_reader<T> reader;
+		reader.init(buffer, length);	
+		return reader && rawbuf_check(reader);
 	}
 
 #endif
