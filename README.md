@@ -9,7 +9,7 @@ raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化
 #include "rawbuffer.h"
 #include <iostream>
 #include <fstream>
-
+#include <assert.h>
 using namespace std;
 
 struct mystruct0 {
@@ -189,24 +189,37 @@ int main(){
 	//This assignment size is far beyond the size estimation of zz in protocol and it will lead to reallocation of instance2. But every writer like "packet" is safe still.
 	//这个赋值已经大大超过了zz在协议中的长度估计, 会导致instance2的重新分配空间。不过所有的现存的rawbuf_writer，像"packet"依然是安全的
      
-     	instance2->uu(instance2()->ww(), 1);
-     
+     	//The allocation or assignment of the packet of array will return a rawbuf_writer_iterator, a sub-class of rawbuf_writer at the begin element.
+	//It supports the increament, [] or other pointer "shifting" operation. It becomes like a real pointer.
+	//对于包的数组的赋值或者分配会返回一个rawbuf_writer_iterator，他是rawbuf_writer的子类并位于数组第一个元素。
+	//他支持自增，[]下标操作或者其它移动操作。他变得像一个真正的指针了。
+	rawbuf_writer_iterator<test_type> it = instance2->uu<test_type1::alloc>(2);
+	it->x(3);
+	++it;
+	it->x(4);
+	it[-1]->a(2);
+	
 	//Now we write the date to file
 	//现在我们把数据写到文件里去
 	{
 		ofstream test_out;
 		test_out.open("./test.data", ios_base::binary | ios_base::out);
+		//data() returns the buffer pointer
+		//size() returns the buffer size
 		test_out.write(instance2.data(), instance2.size());
 		test_out.flush();
 		test_out.close();
 	}
 	
 	/***************************************************************
-	Now we can talk about the reader 
-	现在我们谈谈如何从缓冲区中读数据
+	Now we can talk about the reader from received data
+	现在我们谈谈如何从从外部获取的数据中读取包成员
 	***************************************************************/
 	
-	char *buffer = new char[4096]; // do not use "char buffer[4096]", it is not properly aligned! Only malloc or new gurantee the 8 bytes alignment (the local array of long long in GCC-x86 is still not aligned in 8 bytes).
+	 //do not use "char buffer[4096]" such local variable, it may not be properly 8bytes aligned! Only malloc or new gurantee the 8 bytes alignment (the local array of long long buffer[4096] in GCC-x86 system V ABI is still not aligned in 8 bytes but x64 aligned).
+	//不要使用"char buffer[4096]" 这样的局部变量, 这样的buffer未必已经8字节对齐. 只有malloc或者new可以确保8字节对齐，long long buffer[4096]在x86上gcc遵照system V ABI的实现也是没有8字节对齐的不过x64已经对齐了。
+	char *buffer = new char[4096];
+
 	ifstream test_in;
 	test_in.open("./test.data", ios_base::binary | ios_base::in | ios_base::ate);
 	int length = test_in.tellg();
@@ -214,13 +227,129 @@ int main(){
 	test_in.read(buffer, length);
 	
 	bool result = rawbuf_check<test_type1>(buffer, length); 
-	//This will check buffer as test_type1. 
-	//这会把buffer当成数据包test_type1去检查
+	//This will check buffer as test_type1 and recursively check all the offset of the optional fields, whether they are out of buffer or not properly aligned, or the packet array has different optional fields.
+	//这会把buffer当成数据包test_type1去检查, 并且会递归的检查所有可选字段的偏移量是否有存在超出buffer范围或者没有正确对齐的情况,和包数组中的元素是否不具有相同的可选字段个数等异常情况。
 	
 	if(result){	
-		//Now we can use buffer as a struct if we guarantee the 8 bytes alignment of buffer!
-		//检查通过！由于我们保证了缓冲区首部的8字节对齐，我们可以把缓冲区当结构体来用了。
+		//Now we can use buffer as a struct if we guarantee the 8 bytes alignment of buffer! Every required fields must exits!
+		//检查通过！由于我们保证了缓冲区首部的8字节对齐，我们可以把缓冲区当结构体来用了。其中每个必须的字段都肯定是存在的！
 		((test_type1*)buffer)->output(std::cout);
+		cout << ((test_type1*)buffer)->bb()[0] << endl;
+		
+		//Optional fields may not assigned. We do not have zero length optional array.
+		//可选字段未必已经赋值.我们不会有0长度的可选数组。
+		int* yy = ((test_type1*)buffer)->yy();
+		test_type1::array_count_type* yysize =  ((test_type1*)buffer)->yy<test_type1::get_size>();
+		if(yy){
+			assert(yysize);
+			assert(*yysize != 0);
+			cout << yy[0] << endl;
+		}
+		
+		//But we do not check whether the char array is ended with '\0'. 
+		//We do not assert every char array is stored with string.
+		//Using c_str command for either required or optional fields to visit it safely.
+		//但是我们并没有检查char数组是否用'\0'来结尾，因为我们并不假设char数组里存的就是字符串。
+		//我们可以使用c_str命令来安全的访问这些必须的或者可选的字段
+		
+		const char* aa = ((test_type1*)buffer)->aa<test_type1::c_str>();
+		//For required fields, aa == 0 means '\0' is not found in its array(leading a strnlen cost).
+		if(aa != 0){
+			cout << aa << endl;
+		}
+		
+		const char* zz = ((test_type1*)buffer)->zz<test_type1::c_str>();
+		//For optional fields, zz == 0 means zz was not assigned or not ended with '\0' .
+		if(zz != 0){
+			cout << zz << endl;
+		}
+		
+		//For packet array, we do not get the array pointer but an iterator because outer data may have different count of optional fields from our protocol so it is dangerous to use ++ or [] for the array pointer with wrong sizeof(test_type).
+		//对于包数组，我们并无法直接得到数组的地址指针而是一个迭代器，这是因为从外部来的数据的可选字段数量和我们未必相同，所以使用指向数组的指针去做++或者[]操作是危险的，如果基于我们错误的sizeof(test_type)去移动指针。
+		rawbuf_packet_iterator<test_type> it = ((test_type1*)buffer)->uu();
+		test_type1::array_count_type *psize = ((test_type1*)buffer)->uu<test_type::get_size>();
+		if(psize != 0 && it ){
+			for(size_t i = 0; i<*psize; ++i,++it){
+				it->output(std::out);
+			}
+		}
 	}
-
+	
+	//If a packet has so many optional fields and sub-fields but we only use very small number of them, rawbuf_check will be expensive.
+	//For example, a game role may have 1000+ attributes after level 50 but 10 before level 5， while most gamers are junior players(with low level). Then always full check of all the possible optional fields are usually useless.
+	//So we can check the fields only before we use it. But like jsoncpp, the "check and read" pattern is a little more complicated.
+	//如果一个包有很多可选字段，但是我们仅仅只用其中很少一部分的话，rawbuf_check就显得很昂贵了。
+	//例如一个游戏角色可能在50级后有1000多个属性，但是在5级前只有10个。并且多数玩家都是新手，等级不高。所以总是全量检查所有可能存在的可选字段就往往不必要了。
+	//所以我们可以仅仅在我们使用某个字段的时候去检查他。但是类似jsoncpp这种“检查并读”的模式用起来稍微有点复杂。
+	
+	rawbuf_reader<test_type1> reader2;
+	if(!reader2.init(buffer, length)){	
+		//Init failed! It just checked the top level validity of test_type1, not including its fields.
+		//初始化失败了。reader2.init 只会检查test_type1结构体自身的合法性，还不会去检查他的成员。
+		cout << reader2.error_msg() << endl;
+		delete []buffer;
+		return 0;
+	}
+	
+	//Each data visiting function of reader will check the data validity. If the data was corrupted, reader will be destroyed to stop you to visit other fields! 
+	//Data corruption is not local but always global!
+	//通过reader去访问数据成员会检查数据的合法性，如果发现数据被损坏了，reader会变得不可用来阻止你去访问其它数据！
+	//数据被损坏了的原因和影响不可能是局部的而总是全局的！
+	rawbuf_reader<test_type> reader1 = reader2->xx();	
+	if(!reader1){
+		cout << "The field xx may be empty, or the data was totally corrupted!" << endl;
+		//To distinguish it, we need to check the reader: reader2.
+		//返回值没有获得数据？可能是xx根本就没有被赋值，也可能数据xx被损坏了
+		//为了区分这2种情况，我们需要再去检查reader。
+		if(!reader2){
+			cout << "The data was corrupted!" << endl;
+			//Through reader can not visit other fields, it can get the error message.
+			//尽管reader不能再用于访问数据, 他能告诉你到底检查到了什么样的错误。
+			cout << reader2.error_msg() << endl;
+		}
+		else{
+			cout << "The field xx is empty" << endl;
+		}
+	}
+	else{
+	//reader2->xx() does not check the sub-fields of xx. So if we need to visit deeper for the optional fields of xx, we need to check its fields
+	//reader2->xx() 不会检查xx的子可选项，所以如果想更深入的访问xx的可选字段，需要检查对应的字段。
+		int *x = reader1->x();
+		if(!x){
+			if(!reader1){
+				cout << "The data was corrupted!" << endl;
+				cout << reader1.error_msg() << endl;
+			}
+			else{
+				cout << "The field x is empty" << endl;
+			}
+		}
+		else{
+			cout << "Oh, I just get the fields x: " << *x << endl;
+			//maybe you are tired... you can take a full check for any reader, at any level
+			//可能你被这样抽丝剥茧挨个检查并访问数据弄的很疲惫了是吧，，你随时可以反悔，来个以某个局部节点为树根的全量检查
+			if(rawbuf_check(reader1)){//Ok, you can visit every sub-optional fields of reader1 now.
+				// For the reader, () operation also results the raw pointer
+				test_type* pinstance = reader1();
+				pinstance->output(std::cout);
+			}
+		}
+	}
+	
+	//Now lets talk about the safely visiting the packet array via subclass of reader:rawbuf_reader_iterator
+	//现在我们再来谈谈如何通过reader的子类rawbuf_reader_iterator来安全的访问包数组
+	reader2.init(buffer, length)
+	rawbuf_reader_iterator<test_type> uu = reader2->uu();
+	test_type1::array_count_type *psize = reader2->uu<test_type1::get_size>();
+	if(psize != 0 ){
+		for(size_t i = 0; i<*psize && uu; ++i,++uu){
+			if(rawbuf_check(uu)){	//Do a full check as following output will visiting all the members.
+				uu->output(std::out);
+			}
+		}
+	}
+	
+	//Finally we can examine the packet size, pre-allocation memory cost
+	//最后我们看看这个包的真正大小，
+	
 ```
