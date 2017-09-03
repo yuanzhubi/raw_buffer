@@ -108,7 +108,7 @@ namespace rawbuf{
 				char old_ch = arg[the_size - 1];
 				arg[the_size - 1] = '\0';
                 char* parg = arg;
-                while(*parg != 0){
+                while(*parg != '\0'){
                     if(*parg != '"'){
                         if(*parg != '\\'){
                             this->the_stream << *parg;

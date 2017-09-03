@@ -172,7 +172,7 @@ public:\
         template <typename M> \
         input_type* name(const M& the_src) { \
             const input_type& src = the_src; \
-            T* that = *this; \
+            T* that = this->get(); \
             typename T::offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
             if(*foffset != 0){ \
 				input_type* result = (input_type*)(((char*)foffset) + *foffset ); \
@@ -185,7 +185,7 @@ public:\
 	template<typename T> \
     struct rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name)> : public rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name) - 1 >{\
         input_type* name() { \
-            T* that = *this; \
+            T* that = this->get(); \
             typedef typename T::offset_type offset_type; \
 			if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){return 0;}            /*   The field was not known by the creator.*/\
 			offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
@@ -251,7 +251,7 @@ public:\
         template <typename M> \
         input_type* name(const M& the_src) const{ \
             const input_type& src = the_src; \
-            T* that = *this; \
+            T* that = this->get(); \
 			that->RAW_BUF_JOIN(rawbuf_data_required_, name) = src; \
 			return &(that->RAW_BUF_JOIN(rawbuf_data_required_, name)); \
         } \
@@ -259,7 +259,7 @@ public:\
 	template<typename T> \
     struct rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name)> : public rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name) - 1 >{\
         input_type* name() const{ \
-            T* that = *this; \
+            T* that = this->get(); \
 			return that->name(); \
         } \
 		bool valid(){ \
@@ -267,7 +267,7 @@ public:\
         } \
     };\
 
-#define ADD_FIELD_VECTOR(input_type, name, size_estimation) \
+#define ADD_FIELD_ARRAY(input_type, name, size_estimation) \
     ADD_IMPL_INIT(input_type, name, size_estimation) \
 	RAW_BUF_INCREASER(optional_counter, RAW_BUF_JOIN(rawbuf_tag_optional_, name) ); \
     template <typename T> \
@@ -361,8 +361,9 @@ public:\
         if(psize != 0 && *psize != 0 ){ \
 			input_type* result = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
                         rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
-            ((char*)(result + *psize))[-1] = '\0'; \
-			return result; \
+			if(sizeof(input_type) != 1 || ((char*)(result + *psize))[-1] == '\0'){ \
+				return result; \
+			} \
         }\
         return 0; \
     } \
@@ -382,7 +383,7 @@ public:\
         template <typename M> \
         input_type* name(const M* the_src, array_count_type the_array_size) { \
             const input_type* src = the_src; \
-            T* that = *this; \
+            T* that = this->get(); \
             typename T::offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
             if(*foffset != 0){ \
                 array_count_type *old_size = (array_count_type*)((char*)foffset + *foffset); \
@@ -400,7 +401,7 @@ public:\
         } \
         template <rawbuf_struct_type::alloc_cmd cmd> \
         input_type* name(array_count_type the_array_size) { \
-            T* that = *this; \
+            T* that = this->get(); \
             typename T::offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
             input_type* result = this->writer->append(0, the_array_size, foffset); \
             if(sizeof(input_type) == 1) { \
@@ -437,12 +438,14 @@ public:\
                 this->invalidate(RAW_BUF_ERROR_MSG("Optional array out of bound!" RAW_BUF_INFO(input_type, name))); \
                 return 0; \
             } \
-            ((char*)(result + *psize))[-1] = '\0'; \
-			return result; \
+            if(sizeof(input_type) != 1 || ((char*)(result + *psize))[-1] == '\0'){ \
+				return result; \
+			} \
+			return 0; \
 		} \
 		template <rawbuf_struct_type::visit_array_cmd cmd> \
 		array_count_type* name() { \
-            T* that = *this; \
+            T* that = this->get(); \
             if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){return 0;}            /*   The field was not known by the creator.*/\
 			offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
             if(*foffset == 0){return 0;}																    /*   The optional field was not assigned*/\
@@ -463,7 +466,7 @@ public:\
         } \
     };\
 
-#define ADD_FIELD_VECTOR_REQUIRED(input_type, name, real_size) \
+#define ADD_FIELD_ARRAY_REQUIRED(input_type, name, real_size) \
     ADD_IMPL_INIT(input_type, name, 0) \
 	RAW_BUF_INCREASER(required_counter, RAW_BUF_JOIN(rawbuf_tag_required_, name) ); \
 	input_type RAW_BUF_JOIN(rawbuf_data_required_, name)[real_size]; \
@@ -515,8 +518,10 @@ public:\
     } \
 	template<typename M> /*M can only be c_str*/ \
     input_type* name() { \
-	   ((char*)(this->RAW_BUF_JOIN(rawbuf_data_required_, name) + real_size))[-1] = '\0'; \
-       return this->RAW_BUF_JOIN(rawbuf_data_required_, name); \
+		if(sizeof(input_type) == 1 && strnlen((char*)(this->RAW_BUF_JOIN(rawbuf_data_required_, name)), real_size) == real_size){ \
+			 return 0; \
+		}\
+		return this->RAW_BUF_JOIN(rawbuf_data_required_, name); \
     } \
     template <rawbuf_struct_type::visit_array_cmd cmd> \
     size_t name() const{ \
@@ -539,7 +544,7 @@ public:\
 	template<typename T> \
     struct rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name)> : public rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name) - 1 >{\
         input_type* name() const{ \
-            T* that = *this; \
+            T* that = this->get(); \
 			return that->name(); \
         } \
 		bool valid(){ \
@@ -612,7 +617,7 @@ public:\
     struct rawbuf_writer_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name)> : public rawbuf_writer_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name) - 1 >{\
         typedef  typename T::offset_type offset_type; \
         rawbuf_writer<input_type> name(const input_type& src) { \
-            T* that = *this; \
+            T* that = this->get(); \
             typename T::offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
 			size_t offset_offset; \
 			if(*foffset == 0){ \
@@ -629,7 +634,7 @@ public:\
         } \
         template <rawbuf_struct_type::alloc_cmd cmd> \
         rawbuf_writer<input_type> name() { \
-            T* that = *this; \
+            T* that = this->get(); \
             typename T::offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
 			size_t offset_offset; \
 			if(*foffset == 0){ \
@@ -648,7 +653,7 @@ public:\
     struct rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name)> : public rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name) - 1 >{\
         rawbuf_reader<input_type> name() { \
             rawbuf_reader<input_type> real_result;  \
-			T* that = *this; \
+			T* that = this->get(); \
 			typedef typename T::offset_type offset_type; \
 			if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){real_result.reset();  return real_result;} /*   The field was not known by the creator.*/\
 			offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
@@ -677,7 +682,7 @@ public:\
         } \
     };\
 
-#define ADD_PACKET_VECTOR(input_type, name, size_estimation) \
+#define ADD_PACKET_ARRAY(input_type, name, size_estimation) \
     ADD_IMPL_INIT(input_type, name, size_estimation) \
 	RAW_BUF_INCREASER(optional_counter, RAW_BUF_JOIN(rawbuf_tag_optional_, name) ); \
     template <typename T> \
@@ -772,13 +777,17 @@ public:\
             next_type::copy(src, packet); \
         } \
     }; \
-    input_type* name() const{ \
+    rawbuf_packet_iterator<input_type> name() const{ \
 		array_count_type *psize = this->name<rawbuf_struct_type::get_size>() ; \
+		rawbuf_packet_iterator<input_type> result; \
         if(psize != 0 && *psize != 0 ){ \
-            return (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
+			result.data_ptr = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
                         rawbuf::rawbuf_property<input_type>::alignment_result, size_t)); \
+			result.data_real_size = sizeof(input_type) + (result.data_ptr->_.real_optional_fields_count - input_type::optional_fields_count) * sizeof(input_type::offset_type); \
+			return result; \
         }\
-        return 0; \
+		result.data_ptr = 0; \
+        return result; \
     } \
     template <rawbuf_struct_type::visit_array_cmd cmd> \
     array_count_type* name() const{ \
@@ -822,7 +831,7 @@ public:\
 				result.writer = 0; \
 				return result; \
 			} \
-			T* that = *this; \
+			T* that = this->get(); \
             typename T::offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
 			size_t offset_offset; \
 			input_type* pdata; \
@@ -863,7 +872,7 @@ public:\
                 real_result.reset(); \
                 return real_result; \
             } \
-			if(!real_result.init(result, array_end)){ \
+			if(!real_result.init(result, this->end())){ \
 				this->invalidate(RAW_BUF_ERROR_MSG("First element invalid!" RAW_BUF_INFO(input_type, name))); \
 				return real_result; \
 			}\
@@ -872,7 +881,7 @@ public:\
         } \
 		template <rawbuf_struct_type::visit_array_cmd cmd> \
 		array_count_type* name() { \
-            T* that = *this; \
+            T* that = this->get(); \
             if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){return 0;}            /*   The field was not known by the creator.*/\
 			offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
             if(*foffset == 0){return 0;}																    /*   The optional field was not assigned*/\
@@ -898,9 +907,14 @@ public:\
 					return false; \
 				}\
 				if(it){ \
-					size_t real_size = *psize; ++it; \
+					if(!rawbuf_check(it)){\
+						return false; \
+					}\
+					size_t real_optional_fields_count = (*it)._.real_optional_fields_count; \
+					size_t real_size = *psize; \
+					++it; \
 					for(size_t i = 1 ; i < real_size; ++i,++it){ \
-						if(!it){ \
+						if((!it) || (real_optional_fields_count != (*it)._.real_optional_fields_count) || (!rawbuf_check(it))){ \
 							return false; \
 						} \
 					} \
