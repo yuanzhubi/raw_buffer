@@ -54,7 +54,7 @@ DEF_PACKET_BEGIN(test_type)
     //mystruct1 通过继承rawbuf::alignment_hint告诉了我们他用4字节对齐
     //这样存储会更高效。
     
-    //After protocol is published, we can only modify it safely by adding or removing optional fields at the back.
+    //After protocol is published, we can only modify it safely by adding or removing optional fields at the back of the packet.
     //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。
 DEF_PACKET_END(test_type)
 
@@ -65,9 +65,9 @@ DEF_PACKET_END(test_type)
 DEF_PACKET_BEGIN(test_type1)
     
     //All the optional fields will be visited via their offset stored in the packet. The default offset type is uint32_t
-    //Our packet test_type1 here will not be bigger than 1<<16 in design of users. So we can use a smaller unsigned type instead to save space.
+	//Our packet test_type1 here will not be bigger than 1<<16 in design of users. So we can use a smaller unsigned type instead to save space.
     //所有的可选成员，都会通过在包中存储的他们的位置偏移量来进行访问。默认偏移量类型是uint32_t.
-    //这里我们的数据包test_type1按照使用者的设计，不会超过1<<16, 所以可以使用一个小一点的无符号数值类型来节省空间。
+	//这里我们的数据包test_type1按照使用者的设计，不会超过1<<16, 所以可以使用一个小一点的无符号数值类型来节省空间。
     typedef unsigned short offset_type;
     
     //We can define a fixed length array field: char aa[32];
@@ -123,23 +123,23 @@ int main(){
       //()操作符会返回一个原生的（test_type）指针，必须的字段可以通过原生指针进行赋值, 会快一点点（简直可以忽略）
 	instance()->a(3);
     								
-    mystruct1 t1;
-    t1.xx = 2;
-    t1.yy = 3;
-    t1.zz = 4;
-    instance->z(t1);
+  mystruct1 t1;
+  t1.xx = 2;
+  t1.yy = 3;
+  t1.zz = 4;
+  instance->z(t1);
     
-    //output function is only available for the raw pointer. The output is in json style. Char array will be output as c-string with proper escape.
-      //output函数只能通过原生指针来调用。输出是json格式的。char数组会自动当字符串来打印，并且会进行适当的转义。
+  //output function is only available for the raw pointer. The output is in json style. Char array will be output as c-string with proper escape.
+  //output函数只能通过原生指针来调用。输出是json格式的。char数组会自动当字符串来打印，并且会进行适当的转义。
 	instance()->output(std::cout);
     
 	test_type* pinstance = instance();
     
-    //Fields name is also the data visiting function name. It will return the data 地址.
-    //数据成员的名字也是数据访问的函数名字, 会返回数据成员的地址。
+  //Fields name is also the data visiting function name. It will return the data 地址.
+  //数据成员的名字也是数据访问的函数名字, 会返回数据成员的地址。
 	pinstance->z()->xx = 4;	
-    pinstance->z()->yy = 4;
-    pinstance->output(std::cout);
+  pinstance->z()->yy = 4;
+  pinstance->output(std::cout);
 
 	//Harder usage
 	//更复杂的用法
@@ -178,7 +178,7 @@ int main(){
 	//instance2()->ww()->w() becomes null (as instance()->w() is null) and the memory previously used (in "packet->w(t1);" ) is waste (that memory becomes a "memory fragment" and for time efficiency, we will not try to reuse it.) So be careful for using re-assignment for packet node!
 	//instance2的ww字段的w字段现在变成了空，而且刚才w占据的空间出于时间效率会被浪费掉了而不会被重用。所以谨慎使用重新赋值这个功能。
 
-      instance2->zz("I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\""
+  instance2->zz("I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\""
                   "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\""
                   "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\""
                   "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\""
