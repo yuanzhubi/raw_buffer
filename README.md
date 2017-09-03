@@ -349,7 +349,10 @@ int main(){
 		}
 	}
 	
-	//Finally we can examine the packet size, pre-allocation memory cost
-	//最后我们看看这个包的真正大小，
+	//Finally we can examine the packet size
+	//最后我们看看这个包的真正大小
+	cout << "size:" << instance2.size () << endl;
+	return 0;
+}
 	
 ```
