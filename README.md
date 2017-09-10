@@ -30,7 +30,7 @@ Portable suggestion:
 
 3. Buffer should 8bytes aligned.
 
-https://yuanzhubi.github.io/raw_buffer/ for better api view.
+See https://yuanzhubi.github.io/raw_buffer/ as example for almost the all api.
 
 
 raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化，也可以直接访问缓冲区内数据而无需解包或解析字段，有更高效的时间和空间效率(POD类型可以当required成员来用)。
@@ -54,4 +54,4 @@ raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化
 2. 不要使用64位整数为required类型，他在x86中4字节对齐而在x64中8字节对齐。
 3. 收包的缓冲区需要8字节对齐。
 
-https://yuanzhubi.github.io/raw_buffer/ 看api介绍。
+https://yuanzhubi.github.io/raw_buffer/ 看大部分api的例子。
