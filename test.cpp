@@ -112,7 +112,7 @@ DEF_PACKET_BEGIN(test_type1)
 
     //After protocol is published, we can only modify it safely by adding or removing optional fields at the back of the packet.
     //Or update the size estimation of the optional array of cc, zz, uu.
-    //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。或者修改对可选数组cc,zz,uu的长度估计。
+    //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。或者修改对可选数组如cc,zz,uu,dd的长度估计。
       
 DEF_PACKET_END(test_type1)
 

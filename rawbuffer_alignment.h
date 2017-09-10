@@ -39,13 +39,18 @@ namespace rawbuf{
                                                 ))));
     };
 
-	template<typename T>
+	template<typename T, bool int64_specific = ((sizeof(T) == 8) && is_num<T>::result) >
 	struct rawbuf_alignment{
 		struct inner{
 			T a;
 			char b;
 		};
 		static const rawbuf_uint result = sizeof(inner) - sizeof(T);
+	};
+
+	template<typename T >
+	struct rawbuf_alignment<T, true>{
+		static const rawbuf_uint result = sizeof(T);
 	};
 
     template <typename T, bool is_rawbuf_struct_result = is_rawbuf_struct<T>::result>
