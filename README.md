@@ -3,6 +3,7 @@ raw_buffer can do packet serialization in a raw buffer and allows you to directl
 either in space or speed(supporting POD type as required field!)! You can directly define your data protocol in your cplusplus header file now! It supports forward declared (incomplete) type as optional type, too. C++ supported only till now.
 
 Charactors:
+
 0. Tree data structure stored in a raw buffer
 
 1. Unpack not needed, IDL not needed, API generating tool not needed
@@ -23,11 +24,11 @@ Portable suggestion:
 
 0.Using int32_t, int16_t insteand of int, short.
 
-1.Do not use long double. sizeof(long double) is different between compilers.
+1. Do not use long double. sizeof(long double) is different between compilers.
 
-2.Do not use 8bytes integer as required field. In x86 it is 4bytes aligned but in x64 it is 8bytes aligned.
+2. Do not use 8bytes integer as required field. In x86 it is 4bytes aligned but in x64 it is 8bytes aligned.
 
-3.Buffer should 8bytes aligned.
+3. Buffer should 8bytes aligned.
 
 https://yuanzhubi.github.io/raw_buffer/ for better api view.
 
