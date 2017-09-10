@@ -1,4 +1,4 @@
-﻿#include "rawbuffer.h"
+#include "rawbuffer.h"
 #include <iostream>
 #include <fstream>
 #include <assert.h>
@@ -360,7 +360,7 @@ int main(){
 
 	ifstream test_in;
 	test_in.open("./test.data", ios_base::binary | ios_base::in | ios_base::ate);
-	int length = test_in.tellg();
+    std::streamoff length = test_in.tellg();
 	test_in.seekg (0, test_in.beg);
 	test_in.read(buffer, length);
 	const char* error_msg = rawbuf_has_error<test_type1>(buffer, length); 

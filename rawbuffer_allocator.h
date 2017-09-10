@@ -47,7 +47,7 @@ public:
         *offset_pointer = (M)offset_diff;
 
         if(this->data_size > this->data_capacity ){
-            rawbuf_uint new_capacity = this->data_size << 1;
+            size_t new_capacity = this->data_size << 1;
             this->data_capacity = new_capacity;
             this->data_ptr = (char*)realloc(this->data_ptr, new_capacity);
         }
