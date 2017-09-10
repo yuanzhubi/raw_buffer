@@ -11,6 +11,8 @@ struct mystruct0 {
 };//Yes, we support raw struct packed in raw buffer, if all the numeric member is portable!
   //是的，我们支持原生的结构体，只要里面的数值类型都是可移植的。推荐使用int32_t, int16_t这样更有可移植性的类型。
 
+//Do not use multiple inheritance. It will leads to several unportable layouts between several compilers.
+//别使用多继承。会在各个编译器之间产生很多无法移植的内存布局。
 struct mystruct1: public mystruct0{ 
 };
 
@@ -156,9 +158,6 @@ int main(){
 	pinstance->z()->xx = 4;	
     pinstance->z()->yy = 4;
     OUTPUT_TEST(pinstance->output(std::cout));
-
-
-
 
 	//Harder usage
 	//更复杂的用法
