@@ -11,12 +11,18 @@ namespace rawbuf{
 		json_output& operator = (const json_output& arg);
 		void prefix_init(int depth){
             if(this->current_depth == depth){              
-                this->the_stream << ", " ;              
-            } else if(this->current_depth > depth){
-
-                this->the_stream << this->ender_stack[depth] << ",\n" ;
+                this->the_stream << ',' ;              
+            } else if(this->current_depth > depth) {
+				while(this->current_depth > depth){
+					--this->current_depth;
+					this->the_stream << this->ender_stack[this->current_depth];
+					
+				}
+                this->the_stream << ',' ;
             } 
-			this->current_depth = depth;
+			if(this->current_depth == -1){
+				this->current_depth = 0;
+			}
         }
 	public:
         M& the_stream;
@@ -32,7 +38,7 @@ namespace rawbuf{
             while(this->current_depth > 0){
                 this->the_stream << this->ender_stack[--this->current_depth];
             }
-            this->the_stream << "}\n";
+			this->the_stream << '}';
         }
 
         //rawbuf_packet
@@ -40,11 +46,12 @@ namespace rawbuf{
         bool operator()(T* arg, const char* name, int depth, typename rawbuf::result_check<rawbuf::is_rawbuf_struct<T>::result>::type *p = 0) {(void)p;
             prefix_init(depth);
             if(name != 0){
-                this->the_stream << '"' << name << "\" : ";
+                this->the_stream << '"' << name << "\":";
             }
             if(arg == 0){
                 this->the_stream << "null";
             } else{
+				this->current_depth = depth;
 				this->the_stream << '{' ;
                 this->ender_stack[this->current_depth] = '}';
             }
@@ -55,8 +62,9 @@ namespace rawbuf{
         template<typename T>
         bool operator()(T* arg, const char* name, int depth, typename rawbuf::result_check<!rawbuf::is_rawbuf_struct<T>::result>::type *p = 0) {(void)p;
             prefix_init(depth);
+			this->current_depth = depth;
             if(name != 0){
-                this->the_stream << '"' << name << "\" : ";
+                this->the_stream << '"' << name << "\":";
             }
             if(arg == 0){
                this->the_stream << "null";              //null
@@ -84,22 +92,25 @@ namespace rawbuf{
         bool operator()(void* arg, size_t the_size, const char* name, int depth) {(void)the_size;
             prefix_init(depth);
             if(name != 0){
-                this->the_stream << '"' << name << "\" : ";
+                this->the_stream << '"' << name << "\":";
             }
             if(arg == 0){
                 this->the_stream << "null";
             } else{
+				this->current_depth = depth;
                 this->the_stream << '[' ;
                 this->ender_stack[this->current_depth] = ']';
             }
+			
             return true;
         }
 
         //char array, and we will escape some character and put '\0' at end 
         bool operator()(char* arg, size_t the_size, const char* name, int depth) {
             prefix_init(depth);
+			this->current_depth = depth;
             if(name != 0){
-                this->the_stream << '"' << name << "\" : ";
+                this->the_stream << '"' << name << "\":";
             }
             if(arg == 0 ){
                 this->the_stream << "null";

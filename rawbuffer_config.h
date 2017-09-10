@@ -13,7 +13,7 @@ typedef uint32_t rawbuf_uint;
 typedef int32_t rawbuf_int;
 
 //Template nesting 168 times may be safe for most compiler. You can increase it if your packet has more field and your compiler can afford
-#define MAX_FIELDS_COUNT 168
+#define MAX_FIELDS_COUNT 48
 
 #endif
 

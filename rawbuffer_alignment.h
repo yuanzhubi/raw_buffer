@@ -39,9 +39,18 @@ namespace rawbuf{
                                                 ))));
     };
 
+	template<typename T>
+	struct rawbuf_alignment{
+		struct inner{
+			T a;
+			char b;
+		};
+		static const rawbuf_uint result = sizeof(inner) - sizeof(T);
+	};
+
     template <typename T, bool is_rawbuf_struct_result = is_rawbuf_struct<T>::result>
     struct rawbuf_property{
-        static const rawbuf_uint alignment_result = (rawbuf_uint)T::alignment;
+		static const rawbuf_uint alignment_result = rawbuf_alignment<T>::result;
         static const rawbuf_uint size_result = T::sizer + sizeof(T);
         static const rawbuf_uint aligned_1x = T::aligned_1x;
         static const rawbuf_uint aligned_2x = T::aligned_2x;
@@ -49,36 +58,10 @@ namespace rawbuf{
         static const rawbuf_uint aligned_8x = T::aligned_8x;
     };
 
-    template <rawbuf_int N, bool checker = is_rawbuf_power2<N>::result >
-    struct alignment_hint;
-
-    template <rawbuf_int N>
-    struct alignment_hint<N, true> {
-        static const rawbuf_int result = ((N > 8) ? 8 : N);
-    };
-
-    template<rawbuf_uint N> n_int<alignment_hint<N, true>::result> alignment_hint_tester(alignment_hint<N, true>*);
-    char alignment_hint_tester(...);
-
     template <typename T>
     struct rawbuf_property<T, false>{
-        static const rawbuf_uint type_size = sizeof(T);
-        static const rawbuf_uint alignment_result = (!is_raw_struct<T>::result) ?
-        (
-            is_rawbuf_power2<type_size>::result ?
-            type_size :    //
-            8              //We do not recommend you use the basic type that is not power of two(not portable).
-        ) :
-        (
-            (sizeof(alignment_hint_tester((T*)0)) != sizeof(char)) ?
-            (sizeof(alignment_hint_tester((T*)0)) / sizeof(rawbuf_int)) : // The struct is subclass of alignment_hint<N>
-            (   //your struct does not provide alignment_hint, so we have to guess from the size.
-                (type_size >= 8) ? 8 :
-                (type_size >= 4) ? 4 :
-                (type_size >= 2) ? 2 : 1
-            )
-        );
-        static const rawbuf_uint size_result = type_size;
+        static const rawbuf_uint alignment_result = rawbuf_alignment<T>::result;
+        static const rawbuf_uint size_result = sizeof(T);
         static const rawbuf_uint aligned_1x = ((alignment_result == 1) ? 1: 0);
         static const rawbuf_uint aligned_2x = ((alignment_result == 2) ? 1: 0);
         static const rawbuf_uint aligned_4x = ((alignment_result == 4) ? 1: 0);
