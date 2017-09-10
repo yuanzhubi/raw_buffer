@@ -20,6 +20,8 @@ Charactors:
 
 7. Enable user to optimize for small packet. You can redefine the integer type of the offset, array_size.
 
+8. Header only, C++ only.
+
 Portable suggestion:
 
 0.Using int32_t, int16_t insteand of int, short.
@@ -46,6 +48,7 @@ raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化
 5. 你可以使用前向声明的未完整类型。这加强了功能4！
 6. 打包时有较为准确的缓冲区大小预分配，得益于对包最坏情况的大小的编译时计算.
 7. 允许用户去优化小包。你可以重新定义偏移量，数组大小的整数类型.
+8. Header only, C++ only.
 
 可移植性建议：
 
