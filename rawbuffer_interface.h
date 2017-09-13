@@ -1,42 +1,5 @@
 #if !defined(ADD_IMPL_INIT)
 
-#include "rawbuffer_util.h"
-#include "rawbuffer_alignment.h"
-#include "rawbuffer_allocator.h"
-#include "rawbuffer_output_template.h"
-
-#include <stddef.h>
-
-struct rawbuf_config{
-    typedef rawbuf_uint offset_type;
-	typedef rawbuf_uint array_count_type;
-    const static rawbuf_uint fields_alignment =  rawbuf::rawbuf_alignment<offset_type>::result; // The real alignment_size will be max(rawbuf::rawbuf_alignment<offset_type>::result, alignment_size). You can redefine both of these property in your packet definition.
-};
-
-struct rawbuf_cmd : public rawbuf_config{
-    
-	enum alloc_cmd{
-        alloc = 0
-    };
-
-    enum visit_array_cmd{
-		get_array_size = 0
-    };
-
-	enum check_cmd{
-		check_packet = 0
-	};
-
-	//visit_c_string_cmd
-	typedef int c_str;
-
-	//get element size of packet array
-	typedef int get_element_size;
-
-	//We can "reference" a packet with higher address.
-	typedef int add_ref;
-};
-
 #define DEF_PACKET_BEGIN(name) \
 struct name : public rawbuf_cmd{ \
 private: \
@@ -324,12 +287,12 @@ public:\
         static const rawbuf_uint aligned_8x = parent_type::aligned_8x + (rawbuf::rawbuf_alignment<array_count_type>::result == 8 ? 0:1); \
         template<typename This, typename Func> \
         static void iterate(This& this_instance, Func& func_instance){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_array_size>() ; \
+            array_count_type *psize = rawbuf_get_array_count_pointer(&this_instance, (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
 			if(psize != 0) {\
-                input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
-                if(func_instance(data, *psize)){ \
+                input_type* rawbuf_data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
+                if(func_instance(rawbuf_data, *psize)){ \
                     for(array_count_type i = 0; i < *psize; ++i){ \
-                        func_instance(data + i); \
+                        func_instance(rawbuf_data + i); \
                     }\
                 } \
             }else{ \
@@ -341,12 +304,12 @@ public:\
         } \
         template<typename This, typename Func> \
         static void iterate_with_name(This& this_instance, Func& func_instance){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_array_size>() ; \
+            array_count_type *psize = rawbuf_get_array_count_pointer(&this_instance, (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
 			if(psize != 0) {\
-                input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
-                if(func_instance(data, *psize, #name)){ \
+                input_type* rawbuf_data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
+                if(func_instance(rawbuf_data, *psize, #name)){ \
                     for(array_count_type i = 0; i < *psize; ++i){ \
-                        func_instance(data + i, 0); \
+                        func_instance(rawbuf_data + i, 0); \
                     }\
                 } \
             }else{ \
@@ -358,12 +321,12 @@ public:\
         } \
         template<typename This, typename Func> \
         static void iterate_with_depth(This& this_instance, Func& func_instance, int depth){ \
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_array_size>() ; \
+            array_count_type *psize = rawbuf_get_array_count_pointer(&this_instance, (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
 			if(psize != 0) {\
-                input_type* data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
-                if(func_instance(data, *psize, #name, depth)){ \
+                input_type* rawbuf_data = (input_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
+                if(func_instance(rawbuf_data, *psize, #name, depth)){ \
                     for(array_count_type i = 0; i < *psize; ++i){ \
-                        func_instance(data + i, 0, depth + 1); \
+                        func_instance(rawbuf_data + i, 0, depth + 1); \
                     }\
                 } \
             }else{ \
@@ -376,8 +339,8 @@ public:\
 		template<typename M> \
         static void copy(const M& the_src, const rawbuf_writer<T>& packet){ \
             const T& src = the_src; \
-			array_count_type* psize = src.name<rawbuf_struct_type::get_array_size>() ; \
-			if(psize != 0 && *psize != 0 ){ \
+			array_count_type *psize = rawbuf_get_array_count_pointer(&src, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
+			if(psize != 0){ \
 				 input_type* ptr = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
 							rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
 				 packet->name(ptr, *psize); \
@@ -389,8 +352,8 @@ public:\
         } \
     }; \
     input_type* name() const{ \
-		array_count_type *psize = this->name<rawbuf_struct_type::get_array_size>() ; \
-        if(psize != 0 && *psize != 0 ){ \
+		array_count_type *psize = rawbuf_get_array_count_pointer(this, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
+        if(psize != 0){ \
             return (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
                         rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
         }\
@@ -398,8 +361,8 @@ public:\
     } \
 	template<typename M> /*M can only be c_str*/ \
     input_type* name() const{ \
-		array_count_type *psize = this->name<rawbuf_struct_type::get_array_size>() ; \
-        if(psize != 0 && *psize != 0 ){ \
+		array_count_type *psize = rawbuf_get_array_count_pointer(this, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
+        if(psize != 0){ \
 			input_type* result = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), \
                         rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
 			if(sizeof(input_type) != 1 || ((char*)(result + *psize))[-1] == '\0'){ \
@@ -409,11 +372,11 @@ public:\
         return 0; \
     } \
     template <rawbuf_struct_type::visit_array_cmd cmd> \
-    array_count_type* name() const{ \
+    array_count_type name() const{ \
 		if(this->_.real_optional_fields_count > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){ \
 			const offset_type *foffset = this->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
 			if(*foffset != 0){ \
-				return (array_count_type*)((char*)foffset + *foffset); \
+				return *(array_count_type*)((char*)foffset + *foffset); \
 			}\
 		} \
         return 0; \
@@ -455,9 +418,10 @@ public:\
 	template<typename T> \
     struct rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name)> : public rawbuf_reader_helper<T, RAW_BUF_JOIN(rawbuf_tag_, name) - 1 >{\
 		typedef typename T::offset_type offset_type;\
+		typedef typename T::array_count_type array_count_type; \
         input_type* name() { \
-            array_count_type *psize = this->name<rawbuf_struct_type::get_array_size>() ; \
-            if(psize == 0 || *psize == 0){ \
+            array_count_type *psize = this->rawbuf_get_array_count_pointer(); \
+            if(psize == 0 ){ \
                 return 0; \
             } \
             input_type* result = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
@@ -469,9 +433,9 @@ public:\
             return result; \
         } \
 		template<typename M> /*M can only be c_str*/ \
-		input_type* name() const{ \
-			array_count_type *psize = this->name<rawbuf_struct_type::get_array_size>() ; \
-            if(psize == 0 || *psize == 0){ \
+		input_type* name(){ \
+			array_count_type *psize = this->rawbuf_get_array_count_pointer(); \
+            if(psize == 0){ \
                 return 0; \
             } \
             input_type* result = (input_type*)(RAW_BUF_ALIGN_TYPE(((size_t)(psize + 1)), rawbuf::rawbuf_alignment<input_type>::result, size_t)); \
@@ -485,8 +449,7 @@ public:\
 			} \
 			return 0; \
 		} \
-		template <rawbuf_struct_type::visit_array_cmd cmd> \
-		array_count_type* name() { \
+		array_count_type* rawbuf_get_array_count_pointer() { \
             T* that = (*this)(); \
             if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){return 0;}            /*   The field was not known by the creator.*/\
 			offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
@@ -501,6 +464,23 @@ public:\
                 return 0; \
             }\
             return psize; \
+		} \
+		template <rawbuf_struct_type::visit_array_cmd cmd> \
+		array_count_type name() { \
+            T* that = (*this)(); \
+            if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){return 0;}            /*   The field was not known by the creator.*/\
+			offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
+            if(*foffset == 0){return 0;}																    /*   The optional field was not assigned*/\
+            array_count_type *psize = (array_count_type*)((char*)foffset + *foffset ); \
+            if( this->begin() >= ((char*)(psize + 1)) || this->end() < ((char*)(psize + 1))){				    /*1. The location of the length of the optional field should not be out of the packet.*/\
+                this->invalidate(RAW_BUF_ERROR_MSG("Optional field out of bound!" RAW_BUF_INFO(input_type, name))); \
+                return 0; \
+            } \
+            if(!RAW_BUF_IS_ALIGNED_PTR(psize,rawbuf::rawbuf_alignment<array_count_type>::result)){	    /*2. The location of the length of the optional field should be aligned.*/	\
+                this->invalidate(RAW_BUF_ERROR_MSG("Optional field is not aligned!" RAW_BUF_INFO(input_type, name))); \
+                return 0; \
+            }\
+            return *psize; \
 		} \
 		template<rawbuf_cmd::check_cmd cmd> \
 		const char* check(){ \
@@ -523,30 +503,30 @@ public:\
         typedef members_iterator<T, RAW_BUF_JOIN(rawbuf_tag_, name), false > parent_type; \
         template<typename This, typename Func> \
         static void iterate(This& this_instance, Func& func_instance){ \
-			input_type* data = this_instance.RAW_BUF_JOIN(rawbuf_data_required_, name); \
-			if(func_instance(data, real_size)){\
+			input_type* rawbuf_data = this_instance.RAW_BUF_JOIN(rawbuf_data_required_, name); \
+			if(func_instance(rawbuf_data, real_size)){\
 				for(size_t i = 0; i < real_size; ++i){ \
-                    func_instance(data + i); \
+                    func_instance(rawbuf_data + i); \
                 }\
 			}\
             next_type::iterate(this_instance, func_instance); \
         } \
         template<typename This, typename Func> \
         static void iterate_with_name(This& this_instance, Func& func_instance){ \
-            input_type* data = this_instance.RAW_BUF_JOIN(rawbuf_data_required_, name); \
-			if(func_instance(data, real_size, #name)){\
+            input_type* rawbuf_data = this_instance.RAW_BUF_JOIN(rawbuf_data_required_, name); \
+			if(func_instance(rawbuf_data, real_size, #name)){\
 				for(size_t i = 0; i < real_size; ++i){ \
-                    func_instance(data + i, 0); \
+                    func_instance(rawbuf_data + i, 0); \
                 }\
 			}\
             next_type::iterate_with_name(this_instance, func_instance); \
         } \
         template<typename This, typename Func> \
         static void iterate_with_depth(This& this_instance, Func& func_instance, int depth){ \
-            input_type* data = this_instance.RAW_BUF_JOIN(rawbuf_data_required_, name); \
-			if(func_instance(data, real_size, #name, depth)){\
+            input_type* rawbuf_data = this_instance.RAW_BUF_JOIN(rawbuf_data_required_, name); \
+			if(func_instance(rawbuf_data, real_size, #name, depth)){\
 				for(size_t i = 0; i < real_size; ++i){ \
-                    func_instance(data + i, 0, depth + 1); \
+                    func_instance(rawbuf_data + i, 0, depth + 1); \
                 }\
 			}\
             next_type::iterate_with_depth(this_instance, func_instance, depth); \
@@ -688,7 +668,7 @@ public:\
             return true; \
         } \
 		template<typename M> \
-        rawbuf_writer<M> name(const M& src) { \
+        rawbuf_writer<M> name(const M& the_src) { \
             T* that = (*this)(); \
             offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
 			rawbuf_writer<M> result; \
@@ -700,14 +680,23 @@ public:\
 					result.writer = 0; \
 					return result; \
 				} \
-				result.offset = dp - this->writer->data_ptr; \
-				M::template members_iterator<M, 0, true>::copy(src, result); \
 			} \
 			else{ \
-				dp = ((char*)foffset) + *foffset; \
-				result.offset = dp - this->writer->data_ptr; \
-				M::template members_iterator<M, 0, true>::copy(src, result); \
+				dp = ((char*)foffset) + *foffset; /*re-assignment case*/\
+				if(((local_type*)dp)->_.real_optional_fields_count < M::optional_fields_count){ /*Assgined from older version? */\
+					dp = (char*)(this->writer->template alloc<M, offset_type>(foffset));\
+					if(sizeof(offset_type) <= 2 && dp == 0){ \
+						result.writer = 0; \
+						return result; \
+					} \
+				}\
+				else{ \
+					((local_type*)dp)->_.real_optional_fields_count = T::optional_fields_count; /*Unknown field will be discarded. */\
+				} \
 			} \
+			result.offset = dp - this->writer->data_ptr; \
+			const local_type &src = the_src; \
+			M::template members_iterator<M, 0, true>::copy(src, result); \
             return result; \
         } \
         template <rawbuf_struct_type::alloc_cmd cmd> \
@@ -777,21 +766,21 @@ public:\
 
 #define ARRAY_VISIT_FUNC(rawbuf_type, name) \
 	rawbuf_packet_iterator<rawbuf_type> name() const{ \
-		array_count_type *psize = this->name<rawbuf_struct_type::get_array_size>() ; \
+		array_count_type *psize = rawbuf_get_array_count_pointer(this, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
 		rawbuf_packet_iterator<rawbuf_type> result; \
-        if(psize != 0 && *psize != 0 ){ \
+        if(psize != 0){ \
 			typedef rawbuf_type::offset_type data_size_type;\
 			data_size_type* pdata_real_size = (data_size_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<data_size_type>::result, size_t)); \
-            rawbuf_type* data = (rawbuf_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<rawbuf_type>::result, size_t)); \
-			result.data_ptr = data; \
+            rawbuf_type* rawbuf_data = (rawbuf_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<rawbuf_type>::result, size_t)); \
+			result.data_ptr = rawbuf_data; \
 			result.data_real_size = *pdata_real_size; \
 			return result; \
         }\
 		result.data_ptr = 0; \
         return result; \
     } \
-	template <typename T> /*get_element_size*/\
-	size_t name(typename rawbuf::result_check<!rawbuf::is_rawbuf_struct<T>::result>::type *p = 0) const{ (void)p;\
+	template< template<typename> class X> /*get_element_size*/\
+	size_t name() const{ \
 		if(this->_.real_optional_fields_count > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){ \
 			typedef typename rawbuf_type::offset_type data_size_type;\
 			const offset_type *foffset = this->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
@@ -806,24 +795,24 @@ public:\
 
 #define ARRAY_VISIT_FUNC_ANY(rawbuf_type, name) \
 	template <typename T> \
-	rawbuf_packet_iterator<T> name(typename rawbuf::result_check<rawbuf::is_rawbuf_struct<T>::result>::type *p = 0) const{(void)p; \
-		array_count_type *psize = this->name<rawbuf_struct_type::get_array_size>() ; \
+	rawbuf_packet_iterator<T> name() const{\
+		array_count_type *psize = rawbuf_get_array_count_pointer(this, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
 		rawbuf_packet_iterator<rawbuf_type> result; \
-        if(psize != 0 && *psize != 0 ){ \
+        if(psize != 0){ \
 			typedef typename T::offset_type data_size_type;\
 			data_size_type* pdata_real_size = (data_size_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<data_size_type>::result, size_t)); \
-            rawbuf_type* data = (T*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<T>::result, size_t)); \
-			result.data_ptr = data; \
+            rawbuf_type* rawbuf_data = (T*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<T>::result, size_t)); \
+			result.data_ptr = rawbuf_data; \
 			result.data_real_size = *pdata_real_size; \
 			return result; \
         }\
 		result.data_ptr = 0; \
         return result; \
     } \
-	template <typename T> /*get_element_size*/\
-	size_t name(typename rawbuf::result_check<!rawbuf::is_rawbuf_struct<T>::result>::type *p = 0) const{ (void)p;\
+	template <template<typename> class X> /*get_element_size*/\
+	size_t name() const{ \
         if(this->_.real_optional_fields_count > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){ \
-			typedef typename rawbuf_struct_type::template type_indexer<T,RAW_BUF_JOIN(rawbuf_tag_, name)>::type local_type; \
+			typedef typename rawbuf_struct_type::template type_indexer< X<int>, RAW_BUF_JOIN(rawbuf_tag_, name)>::type local_type; \
 			typedef typename local_type::offset_type data_size_type;\
 			const offset_type *foffset = this->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
 			if(*foffset != 0){ \
@@ -853,13 +842,13 @@ public:\
         template<typename This, typename Func> \
         static void iterate(This& this_instance, Func& func_instance){ \
 			typedef typename local_type::offset_type data_size_type;\
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_array_size>(); \
+			array_count_type *psize = rawbuf_get_array_count_pointer(&this_instance, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
 			if(psize != 0) {\
 				data_size_type* pdata_real_size = (data_size_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<data_size_type>::result, size_t)); \
-                local_type* data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
-				if(func_instance(data, *psize)){ \
+                local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
+				if(func_instance(rawbuf_data, *psize)){ \
 					size_t data_real_size = *pdata_real_size; \
-					char* pdata = (char*)data; \
+					char* pdata = (char*)rawbuf_data; \
                     for(array_count_type i = 0; i < *psize; ++i, pdata+=data_real_size){ \
 						bool result = func_instance(((local_type*)pdata), 0); /*{}*/\
 						if(result){ \
@@ -877,13 +866,13 @@ public:\
         template<typename This, typename Func> \
         static void iterate_with_name(This& this_instance, Func& func_instance){ \
 			typedef typename local_type::offset_type data_size_type;\
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_array_size>() ; \
+            array_count_type *psize = rawbuf_get_array_count_pointer(&this_instance, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
 			if(psize != 0) {\
                 data_size_type* pdata_real_size = (data_size_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<data_size_type>::result, size_t)); \
-                local_type* data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
-				if(func_instance(data, *psize, #name)){ \
+                local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
+				if(func_instance(rawbuf_data, *psize, #name)){ \
 					size_t data_real_size = *pdata_real_size; \
-					char* pdata = (char*)data; \
+					char* pdata = (char*)rawbuf_data; \
                     for(array_count_type i = 0; i < *psize; ++i, pdata+=data_real_size){ \
 						bool result = func_instance(((local_type*)pdata), 0); /*{}*/\
 						if(result){ \
@@ -901,13 +890,13 @@ public:\
         template<typename This, typename Func> \
         static void iterate_with_depth(This& this_instance, Func& func_instance, int depth){ \
 			typedef typename local_type::offset_type data_size_type;\
-            array_count_type *psize = this_instance.name<rawbuf_struct_type::get_array_size>() ; \
+            array_count_type *psize = rawbuf_get_array_count_pointer(&this_instance, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
 			if(psize != 0) {\
                 data_size_type* pdata_real_size = (data_size_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<data_size_type>::result, size_t)); \
-                local_type* data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
-				if(func_instance(data, *psize, #name, depth)){ \
+                local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
+				if(func_instance(rawbuf_data, *psize, #name, depth)){ \
 					size_t data_real_size = *pdata_real_size; \
-					char* pdata = (char*)data; \
+					char* pdata = (char*)rawbuf_data; \
                     for(array_count_type i = 0; i < *psize; ++i, pdata+=data_real_size){ \
 						bool result = func_instance(((local_type*)pdata), 0, depth + 1); /*{}*/\
 						if(result){ \
@@ -926,11 +915,11 @@ public:\
         static void copy(const M& the_src, const rawbuf_writer<T>& packet){ \
 			typedef typename local_type::offset_type data_size_type;\
             const T& src = the_src; \
-			array_count_type* psize = src.name<rawbuf_struct_type::get_array_size>() ; \
-			if(psize != 0 && *psize != 0 ){ \
+			array_count_type *psize = rawbuf_get_array_count_pointer(&src, RAW_BUF_JOIN(rawbuf_tag_optional_, name)); \
+			if(psize != 0){ \
 				data_size_type* pdata_real_size = (data_size_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<data_size_type>::result, size_t)); \
-                local_type* data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
-				packet->name(data, *psize, *pdata_real_size); \
+                local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
+				packet->name(rawbuf_data, *psize, *pdata_real_size); \
             } else{ \
                 T* that = packet(); \
                 that->_.field_offset[1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name)] = 0; \
@@ -939,12 +928,12 @@ public:\
         } \
     }; \
 	visit_func(input_type, name) \
-    template <rawbuf_struct_type::visit_array_cmd cmd> /*get_array_size*/\
-    array_count_type* name() const{ \
+    template <rawbuf_struct_type::visit_array_cmd cmd> /*get_count*/\
+    array_count_type name() const{ \
 		if(this->_.real_optional_fields_count > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){ \
 			const offset_type *foffset = this->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
 			if(*foffset != 0){ \
-				return (array_count_type*)((char*)foffset + *foffset); \
+				return *(array_count_type*)((char*)foffset + *foffset); \
 			}\
 		} \
         return 0; \
@@ -1016,15 +1005,15 @@ public:\
 		typedef typename T::template type_indexer<T,RAW_BUF_JOIN(rawbuf_tag_, name)>::type local_type; \
 		typedef typename T::offset_type offset_type;\
         rawbuf_reader_iterator<local_type> name() { \
-            array_count_type *psize = this->name<rawbuf_struct_type::get_array_size>() ; \
+            array_count_type *psize = this->rawbuf_get_array_count_pointer() ; \
 			rawbuf_reader_iterator<local_type> real_result; \
-            if(psize == 0 || *psize == 0){ \
+            if(psize == 0){ \
 				real_result.reset(); \
                 return real_result; \
             } \
 			typedef typename local_type::offset_type data_size_type; \
 			data_size_type* pdata_real_size = (data_size_type*)(RAW_BUF_ALIGN_TYPE((size_t)(psize + 1), rawbuf::rawbuf_alignment<data_size_type>::result, size_t)); \
-			local_type* data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
+			local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(pdata_real_size + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
 			if(!RAW_BUF_IS_ALIGNED_PTR(pdata_real_size, rawbuf::rawbuf_alignment<data_size_type>::result)){	    /*2. The location of the size of element be aligned.*/	\
                 this->invalidate(RAW_BUF_ERROR_MSG("Optional field sizeof element is not aligned!" RAW_BUF_INFO(input_type, name))); \
 				real_result.reset(); \
@@ -1036,13 +1025,13 @@ public:\
 				return real_result; \
             }\
 			data_size_type data_real_size = *pdata_real_size; \
-            char* array_end = ((char*)data) + (*psize)*data_real_size; \
-            if(((char*)this->end()) < array_end || array_end <= (char*)data){ \
+            char* array_end = ((char*)rawbuf_data) + (*psize)*data_real_size; \
+            if(((char*)this->end()) < array_end || array_end <= (char*)rawbuf_data){ \
                 this->invalidate(RAW_BUF_ERROR_MSG("Optional array out of bound!" RAW_BUF_INFO(input_type, name))); \
                 real_result.reset(); \
                 return real_result; \
             } \
-			if(!real_result.init(data, this->end())){ \
+			if(!real_result.init(rawbuf_data, this->end())){ \
 				this->invalidate(RAW_BUF_ERROR_MSG("First element invalid!" RAW_BUF_INFO(input_type, name))); \
 				return real_result; \
 			}\
@@ -1050,7 +1039,23 @@ public:\
             return real_result; \
         } \
 		template <rawbuf_struct_type::visit_array_cmd cmd> \
-		array_count_type* name() { \
+		array_count_type name() { \
+            T* that = (*this)(); \
+            if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){return 0;}            /*   The field was not known by the creator.*/\
+			offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
+            if(*foffset == 0){return 0;}																    /*   The optional field was not assigned*/\
+            array_count_type *psize = (array_count_type*)((char*)foffset + *foffset ); \
+            if( this->begin() >= ((char*)(psize + 1)) || this->end() < ((char*)(psize + 1))){				    /*1. The location of the length of the optional field should not be out of the packet.*/\
+                this->invalidate(RAW_BUF_ERROR_MSG("Optional field out of bound!" RAW_BUF_INFO(input_type, name))); \
+                return 0; \
+            } \
+            if(!RAW_BUF_IS_ALIGNED_PTR(psize, rawbuf::rawbuf_alignment<array_count_type>::result)){	    /*2. The location of the length of the optional field should be aligned.*/	\
+                this->invalidate(RAW_BUF_ERROR_MSG("Optional field count of elements is not aligned!" RAW_BUF_INFO(input_type, name))); \
+                return 0; \
+            }\
+            return *psize; \
+		} \
+		array_count_type* rawbuf_get_array_count_pointer() { \
             T* that = (*this)(); \
             if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, name)){return 0;}            /*   The field was not known by the creator.*/\
 			offset_type *foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, name); \
@@ -1068,7 +1073,7 @@ public:\
 		} \
 		template<rawbuf_cmd::check_cmd cmd> \
 		const char* check(){ \
-			array_count_type* psize = this->name<rawbuf_struct_type::get_array_size>() ; \
+			array_count_type* psize = this->rawbuf_get_array_count_pointer() ; \
 			if(!(*this)){ \
 				return this->error_msg(); \
 			} \
@@ -1143,5 +1148,7 @@ public:\
 	struct type_indexer<T, RAW_BUF_JOIN(rawbuf_tag_, name)>{ \
 		typedef input_type type; \
 	}; \
+	
+
 
 #endif

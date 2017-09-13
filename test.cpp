@@ -1,3 +1,4 @@
+
 #include "rawbuffer.h"
 #include <iostream>
 #include <fstream>
@@ -35,11 +36,14 @@ DEF_PACKET_BEGIN(test_type)
     ADD_FIELD_REQUIRED(int, a)
     //ADD_FIELD_REQUIRED will layout the field "a" like a c struct member "int a" 
     //ADD_FIELD_REQUIRED 会把a当C结构体的整数成员一样进行布局和存储
-    
-    //The rest fields are optional.
-    //剩下的都是可选的字段
+    //So the packet in raw_buffer is a tree struct and the required fields are value of the tree node.
+	//所以在raw_buffer中包是一个树形的结构体，必须的字段会被视为树的节点的值。
+
+
+    //The rest fields are optional. They are son node of the current packet
+    //剩下的都是可选的字段. 他们是当前包的子节点。
     ADD_FIELD(int , x)
-    ADD_FIELD(int , y)
+    ADD_FIELD(long long , y)	// do not use 64bit integer as required field,their alignment is not portable
     
     ADD_FIELD(mystruct0 , z)		   
     ADD_FIELD(mystruct1 , w)		
@@ -59,7 +63,6 @@ DEF_PACKET_BEGIN(test_type)
     //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。
 DEF_PACKET_END(test_type)
 
-test_type* teseter = 0;
 
 //Now lets turn to a harder one: test_type1
 //好，现在我们来点复杂的协议: test_type1。
@@ -104,7 +107,6 @@ DEF_PACKET_BEGIN(test_type1)
 	//test_type1 can use the packet type itself, make a link list.
 	//test_type1 还可以使用自己类型,可以构造出链表效果。
     ADD_PACKET_ANY(test_type1, vv)
-
 
 	//test_type1 can use the packet type itself as array, make a tree.
 	//test_type1 还可以使用自己类型做数组,可以构造出树的效果。
@@ -214,6 +216,7 @@ int main(){
 	//3. you assign an "any" packet (or array) field. Size of "any" fields is not including in the initial builder capacity.
 	//4. you assign a packet or array field,indirectly leading to case  1, 2, 3
 	//So the two assignment of the above codes are safe becase we do not have the above 5 behaviours till now.
+	//
 	//上面的代码安全吗？其实raw_buffer已经竭尽全力去避免reallocation. 默认的builder初始化容量能够装的下所有的必须和可选字段（
 	//可选数组字段的大小是根据他在定义中的size_estimation参数），能够承受最坏的赋值顺序所导致的对齐开销。
 	//reallocation可能也只可能在如下场景发生后发生（不一定立即发生，在此之后的任何赋值场景随时可能reallocation）：
@@ -228,14 +231,21 @@ int main(){
 	//You can use a field A "reference" another field B only if
 	//0.they come from the same root builder.
 	//1.the parent field of A is allocated or assigned ealier than B.
-	//2.violation of the above two cases leads to reference failed.
+	//2.violation of the above two ruls leads to reference failed.
 	//但是我们可以让一个成员“引用”另一个成员而不是“拷贝”来避免任何可能的reallocation.
 	//仅当以下条件成立时可以让成员A引用成员B：
 	//0.他们来自同一个根builder；
 	//1.A的父节点比B更早分配或赋值；
 	//2.对以上2点的违反将会导致引用失败。
-	if(!instance2->yy<test_type1::add_ref>(instance2()->bb())){	//parent node of yy is instance, which allocated ealier than instance2()->bb()
-		cout << "Add reference failed!" << endl;
+	if(!instance2->yy<test_type1::add_ref>(instance2()->bb())){	
+		//Parent node of yy is instance2 and bb is required field of instance2(so bb is allocated as soon as instance2)
+		//So it disobeys  rule 1.
+		//yy的父节点是instance2 而 bb是instance2的必须字段（所以bb和instance2一起进行分配）
+		//所以这违背了规则1
+		cout << "Add reference must failed!" << endl;
+	}
+	if(instance2->yy<test_type1::add_ref>(instance2()->cc())){	
+		cout << "Add reference must succeed!" << endl;
 	}
 	OUTPUT_TEST(instance2()->output(std::cout));
 
@@ -308,9 +318,9 @@ int main(){
 
 	//We can get the size of element of the packet array by following command
 	//element_size may not equal to sizeof(test_type) if the array was from outer data and its element may have different optional fields
-	size_t element_size = (instance2()->uu<test_type1::get_element_size>()); (void)element_size;
+	size_t element_size = instance2()->uu<test_type1::get_element_size>();
 	assert(element_size == sizeof(test_type));
-
+	
 
 	//it also can be assigned by other.
 	rawbuf_writer_iterator<test_type> itt = instance2->tt(instance(), 1
@@ -325,6 +335,9 @@ int main(){
 	rawbuf_writer_iterator<test_type1> itd = instance2->dd<test_type1::alloc>(2);
 	++itd;
 	itt->v(instance3(), 1)->xx(*instance)->v(instance3(), 1)->xx(*instance); //Amazing!
+	
+	element_size = instance2()->dd<test_type1::get_element_size>();
+	assert(element_size == sizeof(test_type1));
 	
 	//The only difference is when we visit the packet "any" type, we need to mention its type. 
 	//This is the cost of supporting C++03..
@@ -377,9 +390,8 @@ int main(){
 		//可选字段未必已经赋值.我们不会有0长度的可选数组。
 		int* cc = ((test_type1*)buffer)->cc();
 		if(cc){
-			test_type1::array_count_type* ccsize = ((test_type1*)buffer)->cc<test_type1::get_array_size>(); (void)ccsize;
+			test_type1::array_count_type ccsize = ((test_type1*)buffer)->cc<test_type1::get_count>(); (void)ccsize;
 			assert(ccsize);
-			assert(*ccsize != 0);
 			cout << cc[0] << endl;
 		}
 		
@@ -401,12 +413,12 @@ int main(){
 			cout << zz << endl;
 		}
 		
-		//For packet array, we do not get the array pointer but an iterator because outer data may have different count of optional fields from our protocol so it is dangerous to use ++ or [] for the array raw with wrong sizeof(test_type).
-		//对于包数组，我们并无法直接得到数组的地址指针而是一个迭代器，这是因为从外部来的数据的可选字段数量和我们未必相同，所以使用原生指针去做++或者[]操作是危险的，如果基于我们错误的sizeof(test_type)去移动指针。
+		//For packet array, we do not get the array pointer but an iterator because optional fields of packet may change so it is dangerous to use ++ or [] for the array raw with wrong sizeof(test_type).
+		//对于包数组，我们并无法直接得到数组的地址指针而是一个迭代器，这是因为包的可选字段数量可能会发生变化，所以使用原生指针去做++或者[]操作是危险的，如果基于我们错误的sizeof(test_type)去移动指针。
 		rawbuf_packet_iterator<test_type> it = ((test_type1*)buffer)->uu();
-		test_type1::array_count_type *psize = ((test_type1*)buffer)->uu<test_type::get_array_size>();
+		test_type1::array_count_type psize = ((test_type1*)buffer)->uu<test_type::get_count>();
 		if(psize != 0  ){
-			for(size_t i = 0; i<*psize; ++i,++it){
+			for(size_t i = 0; i<psize; ++i,++it){
 				OUTPUT_TEST(it->output(std::cout));
 			}
 		}
@@ -449,8 +461,8 @@ int main(){
 		}
 	}
 	else{
-	//reader2->xx() does not check the sub-fields of xx. So if we need to visit deeper for the optional fields of xx, we need to check its fields
-	//reader2->xx() 不会检查xx的子可选项，所以如果想更深入的访问xx的可选字段，需要检查对应的字段。
+	//reader2->xx() does not check the fields of xx. So if we need to visit deeper for the optional fields of xx, we need to check its fields
+	//reader2->xx() 不会检查xx的字段合法性，所以如果想更深入的访问xx的可选字段，需要检查对应的字段。
 		int *x = reader1->x();
 		if(!x){
 			if(!reader1){
@@ -476,10 +488,10 @@ int main(){
 	//Now lets talk about the safely visiting the packet array via subclass of reader:rawbuf_reader_iterator
 	//现在我们再来谈谈如何通过reader的子类rawbuf_reader_iterator来安全的访问包数组
 	reader2.init(buffer, length);
-	rawbuf_reader_iterator<test_type> uu =	reader2->uu();
-	test_type1::array_count_type *psize = reader2->uu<test_type1::get_array_size>();
+	test_type1::array_count_type psize = reader2->uu<test_type1::get_count>();
 	if(psize != 0 ){
-		for(size_t i = 0; i<*psize && uu; ++i,++uu){
+		rawbuf_reader_iterator<test_type> uu =	reader2->uu(); //reader2->uu() does not check the fields of uu.
+		for(size_t i = 0; i<psize && uu; ++i,++uu){
 			if(!rawbuf_has_error(uu)){	//Do a full check as following output will visit all the members.
 				OUTPUT_TEST(uu()->output(std::cout));
 			}
@@ -489,11 +501,11 @@ int main(){
 			}
 		}
 	}
-	else{
-		if(!reader2){
-			cout << reader2->error_msg() << endl;
-		}
+
+	if(!reader2){
+		cout << reader2->error_msg() << endl;
 	}
+	
 	
 	//During the test, if you see warning"dereferencing pointer blabla does break strict-aliasing rules", it is a bug fixed  in GCC4.4。
 	//测试中如果你看到警告"dereferencing pointer blabla does break strict-aliasing rules"，请勿介意，这是一个已知的GCC4.4的bug，O2或者O3优化时会给出这个提示。
