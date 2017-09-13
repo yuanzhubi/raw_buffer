@@ -514,6 +514,6 @@ int main(){
 	//Finally we can examine the packet size
 	//最后我们看看这个包的真正大小
 	cout << "size:" << instance2.size () << endl;
-	//Till now it is 2048.
+	//Till now it is 2100.
 	return 0;
 }
