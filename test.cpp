@@ -316,17 +316,11 @@ int main(){
 	cout << iti->a() << endl;
 	cout << iti()->a() << endl;
 
-	//We can get the size of element of the packet array by following command
-	//element_size may not equal to sizeof(test_type) if the array was from outer data and its element may have different optional fields
-	size_t element_size = instance2()->uu<test_type1::get_element_size>();
-	assert(element_size == sizeof(test_type));
+
 	
 
 	//it also can be assigned by other.
 	rawbuf_writer_iterator<test_type> itt = instance2->tt(instance(), 1
-		//,sizeof(test_type)   
-		//The last arguments is needed if the sizeof "test_type" of the first argument is unknown
-		//It useful when you want to copy from outer data.
 		);
 	itt->a(-1);
 
@@ -336,8 +330,6 @@ int main(){
 	++itd;
 	itt->v(instance3(), 1)->xx(*instance)->v(instance3(), 1)->xx(*instance); //Amazing!
 	
-	element_size = instance2()->dd<test_type1::get_element_size>();
-	assert(element_size == sizeof(test_type1));
 	
 	//The only difference is when we visit the packet "any" type, we need to mention its type. 
 	//This is the cost of supporting C++03..

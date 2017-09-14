@@ -360,18 +360,12 @@ span {
     </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">iti</span><span class="sc10">-&gt;</span><span class="sc11">a</span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
     </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">iti</span><span class="sc10">()-&gt;</span><span class="sc11">a</span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
 
-    </span><span class="sc2">//We can get the size of element of the packet array by following command
-</span><span class="sc0">    </span><span class="sc2">//element_size may not equal to sizeof(test_type) if the array was from outer data and its element may have different optional fields
-</span><span class="sc0">    </span><span class="sc11">size_t</span><span class="sc0"> </span><span class="sc11">element_size</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">uu</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">::</span><span class="sc11">get_element_size</span><span class="sc10">&gt;();</span><span class="sc0">
-    </span><span class="sc11">assert</span><span class="sc10">(</span><span class="sc11">element_size</span><span class="sc0"> </span><span class="sc10">==</span><span class="sc0"> </span><span class="sc5">sizeof</span><span class="sc10">(</span><span class="sc11">test_type</span><span class="sc10">));</span><span class="sc0">
+
     
 
     </span><span class="sc2">//it also can be assigned by other.
 </span><span class="sc0">    </span><span class="sc11">rawbuf_writer_iterator</span><span class="sc10">&lt;</span><span class="sc11">test_type</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">itt</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">tt</span><span class="sc10">(</span><span class="sc11">instance</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc4">1</span><span class="sc0">
-        </span><span class="sc2">//,sizeof(test_type)   
-</span><span class="sc0">        </span><span class="sc2">//The last arguments is needed if the sizeof "test_type" of the first argument is unknown
-</span><span class="sc0">        </span><span class="sc2">//It useful when you want to copy from outer data.
-</span><span class="sc0">        </span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc11">itt</span><span class="sc10">-&gt;</span><span class="sc11">a</span><span class="sc10">(-</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
 
     </span><span class="sc2">//Now we will exam the "any" type field whether they are the same as "non-any" type
@@ -380,8 +374,6 @@ span {
     </span><span class="sc10">++</span><span class="sc11">itd</span><span class="sc10">;</span><span class="sc0">
     </span><span class="sc11">itt</span><span class="sc10">-&gt;</span><span class="sc11">v</span><span class="sc10">(</span><span class="sc11">instance3</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc4">1</span><span class="sc10">)-&gt;</span><span class="sc11">xx</span><span class="sc10">(*</span><span class="sc11">instance</span><span class="sc10">)-&gt;</span><span class="sc11">v</span><span class="sc10">(</span><span class="sc11">instance3</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc4">1</span><span class="sc10">)-&gt;</span><span class="sc11">xx</span><span class="sc10">(*</span><span class="sc11">instance</span><span class="sc10">);</span><span class="sc0"> </span><span class="sc2">//Amazing!
 </span><span class="sc0">    
-    </span><span class="sc11">element_size</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">dd</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">::</span><span class="sc11">get_element_size</span><span class="sc10">&gt;();</span><span class="sc0">
-    </span><span class="sc11">assert</span><span class="sc10">(</span><span class="sc11">element_size</span><span class="sc0"> </span><span class="sc10">==</span><span class="sc0"> </span><span class="sc5">sizeof</span><span class="sc10">(</span><span class="sc11">test_type1</span><span class="sc10">));</span><span class="sc0">
     
     </span><span class="sc2">//The only difference is when we visit the packet "any" type, we need to mention its type. 
 </span><span class="sc0">    </span><span class="sc2">//This is the cost of supporting C++03..

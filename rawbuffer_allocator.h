@@ -119,13 +119,13 @@ public:
         return dp;
     }
 
-	template <typename T, typename M, typename A >	/*count|sizeof(T)|values*/
+	template <typename T, typename M, typename A >	/*count|values*/
     T* alloc(A count, M* offset_pointer){
 		typedef typename T::offset_type offset_type;
 
         const size_t new_offset_count = RAW_BUF_ALIGN(this->data_size, rawbuf::rawbuf_property<A>::alignment_result);
-		const size_t new_offset_size = RAW_BUF_ALIGN(new_offset_count + sizeof(A), rawbuf::rawbuf_alignment<offset_type>::result);
-        const size_t new_offset = RAW_BUF_ALIGN(new_offset_size + sizeof(offset_type), rawbuf::rawbuf_alignment<T>::result);
+		//const size_t new_offset_size = RAW_BUF_ALIGN(new_offset_count + sizeof(A), rawbuf::rawbuf_alignment<offset_type>::result);
+        const size_t new_offset = RAW_BUF_ALIGN(new_offset_count + sizeof(A), rawbuf::rawbuf_alignment<T>::result);
         const size_t realsize = count * sizeof(T);
         const size_t offset_diff = new_offset_count - (rawbuf_uint)((char*)offset_pointer - this->data_ptr);
 
@@ -143,7 +143,7 @@ public:
         }
 
         *(A*)(this->data_ptr + new_offset_count) = count;
-		*(offset_type*)(this->data_ptr + new_offset_size) = sizeof(T);
+		//*(offset_type*)(this->data_ptr + new_offset_size) = sizeof(T);
         T* dp = (T*)(this->data_ptr + new_offset);
         for(size_t i = 0; i < count; ++i,++dp){
             init_rawbuf_struct(dp);
@@ -387,6 +387,14 @@ const char* rawbuf_has_error(void* buffer, size_t length){
 		return reader.error_msg();
 	}
 	return rawbuf_has_error(reader);
+}
+
+template <typename T>
+size_t rawbuf_get_packet_size(const T* packet){
+	size_t real_optional_fields_count = packet->_.real_optional_fields_count;
+	const size_t estimate_size = sizeof(T) - T::optional_fields_count * sizeof(typename T::offset_type) + real_optional_fields_count * sizeof(typename T::offset_type);
+	const size_t result = RAW_BUF_ALIGN(estimate_size, rawbuf::rawbuf_alignment<T>::result);
+	return result;
 }
 
 #endif
