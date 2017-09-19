@@ -114,14 +114,23 @@ DEF_PACKET_BEGIN(test_type1)
 
     //After protocol is published, we can only modify it safely by adding or removing optional fields at the back of the packet.
     //Or update the size estimation of the optional array of cc, zz, uu.
-    //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。或者修改对可选数组如cc,zz,uu,dd的长度估计。
+    //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。或者修改对可选数组如cc,zz,uu,tt, dd的长度估计。
       
 DEF_PACKET_END(test_type1)
+
 
 #define OUTPUT_TEST(x) std::cout <<"Line " RAW_BUF_STRING(__LINE__) ": " RAW_BUF_STRING(x) << std::endl; x; std::cout << std::endl
 
 //Now let us use our protocol
 //好，我们来试试我们定义的协议。
+//You'd better declare your protocol in a header file test_proto.h out of your source to make it shareable.
+//We define our protocol by macro and maybe difficult to debug into source. 
+//We can generate a readable header file via preproccess and format tools like
+//"gcc -E test_proto.h -P -nostdinc  | astyle > proto.h" 
+//实际使用最好像test_proto.h 那样用一个单独的文件来声明协议（方便分发）。协议是用宏来定义的，可能不方便源码级调试。
+//可以用"gcc -E test_proto.h -P -nostdinc  | astyle > proto.h" 来利用预处理和astyle来生成一个可阅读的头文件。
+//We provide "./proto_astyle.sh test_proto.h > proto.h" to help you simplify the command!
+
 int main(){
     cout << boolalpha ;
 
@@ -498,7 +507,6 @@ int main(){
 		cout << reader2->error_msg() << endl;
 	}
 	
-	
 	//During the test, if you see warning"dereferencing pointer blabla does break strict-aliasing rules", it is a bug fixed  in GCC4.4。
 	//测试中如果你看到警告"dereferencing pointer blabla does break strict-aliasing rules"，请勿介意，这是一个已知的GCC4.4的bug，O2或者O3优化时会给出这个提示。
 	//https://gcc.gnu.org/bugzilla/show_bug.cgi?id=39390
@@ -506,6 +514,6 @@ int main(){
 	//Finally we can examine the packet size
 	//最后我们看看这个包的真正大小
 	cout << "size:" << instance2.size () << endl;
-	//Till now it is 2100.
+	//Till now it is 2076.
 	return 0;
 }
