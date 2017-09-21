@@ -5,6 +5,7 @@
 typedef unsigned __int32 uint32_t;
 typedef __int32 int32_t;
 __pragma(warning(disable:4127))
+__pragma(warning(disable:4458))
 #else
 #include <stdint.h>
 #endif
