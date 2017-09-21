@@ -121,7 +121,7 @@ public:
 
 	template <typename T, typename M, typename A >	/*count|values*/
     T* alloc(A count, M* offset_pointer){
-		typedef typename T::offset_type offset_type;
+		//typedef typename T::offset_type offset_type;
 
         const size_t new_offset_count = RAW_BUF_ALIGN(this->data_size, rawbuf::rawbuf_property<A>::alignment_result);
 		//const size_t new_offset_size = RAW_BUF_ALIGN(new_offset_count + sizeof(A), rawbuf::rawbuf_alignment<offset_type>::result);
@@ -276,6 +276,7 @@ public:
 	operator bool() const {return this->data_ptr != 0;}
 	void reset(){
 		this->data_ptr = 0;
+		this->_.error_msg = 0;
 	}
 	void invalidate(const char* msg) {
 		this->data_ptr = 0;

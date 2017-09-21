@@ -810,7 +810,6 @@ public:\
         static const rawbuf_uint aligned_8x = parent_type::aligned_8x + (rawbuf::rawbuf_alignment<array_count_type>::result == 8 ? 0:1); \
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
-			typedef typename local_type::offset_type data_size_type;\
 			array_count_type *rawbuf_psize = rawbuf_get_array_count_pointer(&this_instance, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
 			if(rawbuf_psize != 0) {\
                 local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(rawbuf_psize + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
@@ -833,7 +832,6 @@ public:\
         } \
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate_with_name(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
-			typedef typename local_type::offset_type data_size_type;\
 			array_count_type *rawbuf_psize = rawbuf_get_array_count_pointer(&this_instance, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
 			if(rawbuf_psize != 0) {\
                 local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(rawbuf_psize + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
@@ -878,7 +876,6 @@ public:\
         } \
 		template<typename RAWBUF_M> \
         static void copy(const RAWBUF_M& the_src, const rawbuf_writer<RAWBUF_T>& rawbuf_packet){ \
-			typedef typename local_type::offset_type data_size_type;\
             const RAWBUF_T& rawbuf_src = the_src; \
 			array_count_type *rawbuf_psize = rawbuf_get_array_count_pointer(&rawbuf_src, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
 			if(rawbuf_psize != 0){ \
