@@ -12,7 +12,7 @@ struct rawbuf_immutable_config{
 struct rawbuf_config : public rawbuf_immutable_config{
     typedef rawbuf_uint offset_type;
 	typedef rawbuf_uint array_count_type;
-    const static rawbuf_uint fields_alignment =  rawbuf::rawbuf_alignment<offset_type>::result; // The real alignment_size will be max(rawbuf::rawbuf_alignment<offset_type>::result, alignment_size). You can redefine both of these property in your packet definition.
+   // const static rawbuf_uint fields_alignment =  rawbuf::rawbuf_alignment<offset_type>::result; // The real alignment_size will be max(rawbuf::rawbuf_alignment<offset_type>::result, alignment_size). You can redefine both of these property in your packet definition.
 };
 
 

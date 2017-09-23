@@ -17,12 +17,12 @@
 #define RAW_BUF_JOIN3(x, y, z) RAW_BUF_JOIN0(RAW_BUF_JOIN(x, y),z)
 
 #define RAW_BUF_STRING2(x) #x
-#define RAW_BUF_STRING(x) RAW_BUF_STRING2(x)
+#define RAW_BUF_STRING(x) RAW_BUF_STRING2(ARGS_LIST(x))
 #define RAW_BUF_ERROR_MSG(x) x " File: " __FILE__ ", line: " RAW_BUF_STRING(__LINE__) "."
 
 
-#define RAW_BUF_INFO2(input_type, name)  " Type: " RAW_BUF_STRING(input_type) ", name: " RAW_BUF_STRING(name)  "."
-#define RAW_BUF_INFO(input_type, name) RAW_BUF_INFO2(input_type, name)
+#define RAW_BUF_INFO2(input_type, name)  " Type: " RAW_BUF_STRING(ARGS_LIST(input_type)) ", name: " RAW_BUF_STRING(name)  "."
+#define RAW_BUF_INFO(input_type, name) RAW_BUF_INFO2(ARGS_LIST(input_type), name)
 
 #define RAW_BUF_OFFSET_OF(s, m)  ((size_t)&(((s *)64)->m) - 64)
 

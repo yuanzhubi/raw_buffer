@@ -1,5 +1,5 @@
 #include "rawbuffer_interface.h"
-//If you generate a readable header file, it can help you debug from the source of raw_buffer.
+
 struct mystruct0 {
     int xx;
     short yy;
@@ -56,7 +56,7 @@ DEF_PACKET_BEGIN(test_type)
 
     //After protocol is published, we can only modify it safely by adding or removing optional fields at the back of the packet.
     //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。
-DEF_PACKET_END(test_type)
+DEF_PACKET_END
 
 
 //Now lets turn to a harder one: test_type1
@@ -71,44 +71,73 @@ DEF_PACKET_BEGIN(test_type1)
     
     //We can define a fixed length array field like: char aa[12];
     //我们可以定义一个定长的数组成员：char aa[12];
-    ADD_FIELD_ARRAY_REQUIRED(char, aa, 12)
-    
-    //Ok, next! 
-    //好的，再来一个
-    ADD_FIELD_ARRAY_REQUIRED(int, bb, 3)
-    
-    //We can define an optioanl variable length vector field. 
-    //我们也可以定义一个变长的可选的数组成员。注意32仅仅是个长度估计，用来初始化时评估预分配内存数量的，不会限制cc的大小，可以安全的随意修改。
-    ADD_FIELD_ARRAY(int, cc, 32)	
-    //Here 32 just provides an estimation of ccfor the writer pre-allocation. It does not limit the size of cc.
-    //32 can be changed into other number after the protocol is published because it just affect the meory allocator.
-	  
-    //We can define a knownable packet as field. For safety it can not be required!
-    //我们还可以定义一个已知的包类型作为数据成员。为了安全（包类型可能增减成员），他不可以被声明为必须的。
-    ADD_PACKET(test_type, xx)
-    
-    //just more fields..
-    //再来更多的数据成员
-    ADD_FIELD(int , yy)
-    ADD_FIELD_ARRAY(char, zz, 32)
-    ADD_PACKET(test_type , ww)
-    
-    //We can define a optioanl variable length vector of knownable packet as field. For safety it can not be required!
-    //我们还可以定义一个已知的包类型的变长数组作为数据成员。为了安全（包类型可能增减成员），他不可以被声明为必须的。
-	ADD_PACKET_ARRAY(test_type, uu, 4)
+ADD_FIELD_ARRAY_REQUIRED(char, aa, 12)
 
-	ADD_PACKET_ARRAY(test_type, tt, 4)
+//Ok, next! 
+//好的，再来一个
+ADD_FIELD_ARRAY_REQUIRED(int, bb, 3)
 
-	//test_type1 can use the packet type itself, make a link list.
-	//test_type1 还可以使用自己类型,可以构造出链表效果。
-    ADD_PACKET_ANY(test_type1, vv)
+//We can define an optioanl variable length vector field. 
+//我们也可以定义一个变长的可选的数组成员。注意32仅仅是个长度估计，用来初始化时评估预分配内存数量的，不会限制cc的大小，可以安全的随意修改。
+ADD_FIELD_ARRAY(int, cc, 32)
+//Here 32 just provides an estimation of ccfor the writer pre-allocation. It does not limit the size of cc.
+//32 can be changed into other number after the protocol is published because it just affect the meory allocator.
 
-	//test_type1 can use the packet type itself as array, make a tree.
-	//test_type1 还可以使用自己类型做数组,可以构造出树的效果。
-    ADD_PACKET_ARRAY_ANY(test_type1, dd, 3)
+//We can define a knownable packet as field. For safety it can not be required!
+//我们还可以定义一个已知的包类型作为数据成员。为了安全（包类型可能增减成员），他不可以被声明为必须的。
+ADD_PACKET(test_type, xx)
 
-    //After protocol is published, we can only modify it safely by adding or removing optional fields at the back of the packet.
-    //Or update the size estimation of the optional array of cc, zz, uu.
-    //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。或者修改对可选数组如cc,zz,uu,dd的长度估计。
-      
-DEF_PACKET_END(test_type1)
+//just more fields..
+//再来更多的数据成员
+ADD_FIELD(int, yy)
+ADD_FIELD_ARRAY(char, zz, 32)
+ADD_PACKET(test_type, ww)
+
+//We can define a optioanl variable length vector of knownable packet as field. For safety it can not be required!
+//我们还可以定义一个已知的包类型的变长数组作为数据成员。为了安全（包类型可能增减成员），他不可以被声明为必须的。
+ADD_PACKET_ARRAY(test_type, uu, 4)
+
+ADD_PACKET_ARRAY(test_type, tt, 4)
+
+//test_type1 can use the packet type itself, make a link list.
+//test_type1 还可以使用自己类型,可以构造出链表效果。
+ADD_PACKET_ANY(test_type1, vv)
+
+//test_type1 can use the packet type itself as array, make a tree.
+//test_type1 还可以使用自己类型做数组,可以构造出树的效果。
+ADD_PACKET_ARRAY_ANY(test_type1, dd, 3)
+
+//After protocol is published, we can only modify it safely by adding or removing optional fields at the back of the packet.
+//Or update the size estimation of the optional array of cc, zz, uu.
+//协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。或者修改对可选数组如cc,zz,uu,tt, dd的长度估计。
+
+DEF_PACKET_END
+
+//template packet definition
+//使用模板的包类型定义
+template<typename T
+	, typename Array_count_type = rawbuf_config::array_count_type
+	, bool is_raw_buf_test_result = rawbuf::is_rawbuf_struct<T>::result
+>
+DEF_PACKET_BEGIN(test_type2)
+	typedef Array_count_type array_count_type;
+	//ADD_FIELD(T, a)
+	//ADD_PACKET_ANY(test_type2, b)
+	//ADD_PACKET_ARRAY_ANY(test_type2, c, 3)
+DEF_PACKET_END
+/*
+//template specification or partial specification, and you need to mention how to specify.
+//模板特化或者偏特化，需要你写出特化形式
+template<typename T, typename Array_count_type> //
+//DEF_PACKET_BEGIN(test_type2<T, false>) No! The c++ preproccesor will think "test_type2<T, false>"  as two arguments "test_type2<T", " false>"
+//宏不认识<> 所以他认为里面的,是分割用的。
+//using ARGS_LIST to wrap the specification arguments list.
+DEF_PACKET_BEGIN(test_type2<ARGS_LIST(T, Array_count_type, false)>)
+	typedef Array_count_type array_count_type;
+	ADD_FIELD(T, a)
+	//ADD_PACKET_ANY(test_type2, b)
+	//ADD_PACKET_ARRAY_ANY(test_type2, c, 3)
+DEF_PACKET_END
+
+
+*/
