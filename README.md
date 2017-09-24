@@ -14,7 +14,7 @@ Charactors:
 
 4. A node can be reference by one more parent nodes that created ealier(which avoids the ring) to save space.
 
-5. You can use forward declared packet type. This function enhances 4!
+5. You can use forward declared packet type or even packet type itself as field type. This function enhances 4（enalbing instrusive list and tree）!
 
 6. Accurate buffer pre-allocation in packeting, according to evluate the worst case in compile time.
 
@@ -48,7 +48,7 @@ raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化
 2. 可以安全的对抗各种恶意制造的输入，包括缓冲区上溢或者下溢，数据未对齐。可以在树的任何一个节点上开始对子树进行检查。访问c字符串时，注意使用一个c_str命令来保证'\0'结尾.
 3. 你可以在包定义中使用POD结构体，POD联合.
 4. 一个节点可以被一个或者多个比他创建的早（这个限制是为了避免环）的节点所引用来节省内存空间.
-5. 你可以使用前向声明的未完整类型。这加强了功能4！
+5. 你可以使用前向声明的未完整类型甚至包类型自己作为包数据成员类型。这加强了功能4（允许链表，树等数据结构类型在包中实做）！
 6. 打包时有较为准确的缓冲区大小预分配，得益于对包最坏情况的大小的编译时计算.
 7. 允许用户去优化小包。你可以重新定义偏移量，数组大小的整数类型
 8. Header only, C++ only. GCC3.4-5.3 测试通过. VC2008-2017 测试通过. clang 3.5-3.6 测试通过. intel c++ 2016 测试通过。
