@@ -20,7 +20,10 @@ Charactors:
 
 7. Enable user to optimize for small packet. You can redefine the integer type of the offset, array_size.
 
-8. Header only, C++ only. GCC3.4-5.3 test passed. VC2008-2015 test passed. Intel c++ has some compiling bugs on 7 but supporting others.
+8. Header only, C++ only. GCC3.4-5.3 test passed. VC2008-2017 test passed. clang 3.5-3.6 test passed. Intel C++ 16.0 test passed. More test are welcome!
+
+9. (Since 1.0.2)Template packet now are supported https://github.com/yuanzhubi/raw_buffer/releases/tag/1.0.2. Notice the compiler limit.
+
 
 Portable suggestion:
 
@@ -48,7 +51,8 @@ raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化
 5. 你可以使用前向声明的未完整类型。这加强了功能4！
 6. 打包时有较为准确的缓冲区大小预分配，得益于对包最坏情况的大小的编译时计算.
 7. 允许用户去优化小包。你可以重新定义偏移量，数组大小的整数类型
-8. Header only, C++ only. GCC3.4-5.3 测试通过. VC2008-2015 测试通过. Intel c++ 对7的支持有bug（编译无法通过）, 其余功能正常.
+8. Header only, C++ only. GCC3.4-5.3 测试通过. VC2008-2017 测试通过. clang 3.5-3.6 测试通过. intel c++ 2016 测试通过。
+9. (Since 1.0.2)模版类定义的包也可以支持了https://github.com/yuanzhubi/raw_buffer/releases/tag/1.0.2. 注意编译器限制。
 
 可移植性建议：
 
