@@ -19,6 +19,8 @@ std::ostream& operator<< (std::ostream &ost, const mystruct0& rhs){
     return ost;
 }
 
+
+
 //Yes, we can use the packet data type that defined later as fields.
 //是的，我们还可以使用延迟定义的包数据类型作为包的数据成员。
 struct test_type1;
@@ -44,7 +46,9 @@ DEF_PACKET_BEGIN(test_type)
     ADD_FIELD(mystruct1 , w)		
 
 	//"ANY" field definition can be used for any other packet type that even only declared.
+	//It does not lose any performanse but we can not estimate the packet(test_type) max size at compiling time.
 	//"ANY" 式的成员定义可以用于任何其他仅仅有声明的包类型。
+	//它不会带来任何性能的损失，但是会让我们无法在编译时估计包(test_type)的最大空间开销。
 
 	//test_type1 need to be defined by DEF_PACKET_BEGIN when test_type is used in your codes and test_type1 must be another packet type!
 	//当你开始使用test_type的时候，test_type1需要已被定义并且他必须也是通过DEF_PACKET_BEGIN定义的数据包类型。
@@ -121,23 +125,29 @@ template<typename T
 >
 DEF_PACKET_BEGIN(test_type2)
 	typedef Array_count_type array_count_type;
-	//ADD_FIELD(T, a)
-	//ADD_PACKET_ANY(test_type2, b)
-	//ADD_PACKET_ARRAY_ANY(test_type2, c, 3)
+	ADD_FIELD_REQUIRED(T, o)
+	ADD_FIELD(T, a)
+	ADD_PACKET_ANY(test_type2, b)
+	ADD_PACKET_ARRAY_ANY(test_type2, c, 3)
 DEF_PACKET_END
-/*
+
+
+
 //template specification or partial specification, and you need to mention how to specify.
 //模板特化或者偏特化，需要你写出特化形式
 template<typename T, typename Array_count_type> //
 //DEF_PACKET_BEGIN(test_type2<T, false>) No! The c++ preproccesor will think "test_type2<T, false>"  as two arguments "test_type2<T", " false>"
 //宏不认识<> 所以他认为里面的,是分割用的。
-//using ARGS_LIST to wrap the specification arguments list.
-DEF_PACKET_BEGIN(test_type2<ARGS_LIST(T, Array_count_type, false)>)
+//using ARGS_LIST to wrap any template arguments list.
+//使用ARGS_LIST来把所有的模板参数列表给包起来
+DEF_PACKET_BEGIN(test_type2<ARGS_LIST(T, Array_count_type, true)>)
 	typedef Array_count_type array_count_type;
-	ADD_FIELD(T, a)
-	//ADD_PACKET_ANY(test_type2, b)
-	//ADD_PACKET_ARRAY_ANY(test_type2, c, 3)
+	ADD_PACKET(T, a)
+	ADD_PACKET(test_type2<int>, b)		//Use 
+	ADD_PACKET_ARRAY_ANY(test_type2, c, 3)	//Here test_type2 is test_type2<ARGS_LIST(T, Array_count_type, true)> itself
+	ADD_FIELD(std::pair<ARGS_LIST(int, double)>, d)	//ARGS_LIST should be used again.
+	ADD_FIELD_REQUIRED(std::pair<ARGS_LIST(int, double)>, e)
+	ADD_PACKET_ARRAY_ANY(test_type2<int>, f, 3)
 DEF_PACKET_END
 
 
-*/

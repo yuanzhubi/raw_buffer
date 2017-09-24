@@ -1,7 +1,5 @@
 #if !defined(ADD_IMPL_INIT)
 
-#define ARGS_LIST(...) __VA_ARGS__
-
 #define DEF_PACKET_BEGIN(rawbuf_name) \
 struct rawbuf_name : public rawbuf_cmd{ \
 private: \
@@ -38,13 +36,13 @@ public:\
     }; \
 	template<typename RAWBUF_T, rawbuf_int RAWBUF_N =  MAX_FIELDS_COUNT - 1> \
     struct rawbuf_reader_helper : public rawbuf_reader_helper<RAWBUF_T, RAWBUF_N-1>{\
-        template<rawbuf_cmd::check_cmd cmd> \
+        template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
 		const char* check(){return 0;} \
     }; \
     template<typename RAWBUF_T> \
 	struct rawbuf_reader_helper<RAWBUF_T, -1> : public rawbuf_reader<RAWBUF_T>{\
-        template<rawbuf_cmd::check_cmd cmd> \
-		const char* check(){return ((rawbuf_reader_helper<RAWBUF_T, 0>&)(*this)).check<cmd>();} \
+        template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
+		const char* check(){return ((rawbuf_reader_helper<RAWBUF_T, 0>*)this)->template check<RAWBUF_cmd>(RAWBUF_EMPTY);} \
     }; \
 
 
@@ -53,7 +51,7 @@ public: \
 	static const rawbuf_uint fields_count = RAW_BUF_INDEXER(member_counter); \
     static const rawbuf_uint optional_fields_count = RAW_BUF_INDEXER(optional_counter); \
 	static const rawbuf_uint required_fields_count = RAW_BUF_INDEXER(required_counter); \
-    typedef members_iterator<rawbuf_struct_type, fields_count - 1> prev_type; \
+    typedef members_iterator<int, fields_count - 1> prev_type; \
 	static const rawbuf_uint fields_alignment =  rawbuf::rawbuf_alignment<offset_type>::result; \
 	static const rawbuf_uint alignment = (fields_alignment  > prev_type::required_alignment) ? fields_alignment : prev_type::required_alignment; \
 	union{ \
@@ -67,7 +65,7 @@ public: \
     static const rawbuf_uint aligned_8x = prev_type::aligned_8x + (alignment == 8 ? 0:1); \
 \
     template<typename RAWBUF_T> \
-    struct members_iterator<RAWBUF_T, RAW_BUF_INDEXER(member_counter), true>{ \
+    struct members_iterator<RAWBUF_T, fields_count, true>{ \
 		static const bool is_required = false; \
         template<typename RAWBUF_This, typename RAWBUF_M> \
         static void output(const RAWBUF_This&, RAWBUF_M&, int rawbuf_depth){ \
@@ -88,19 +86,19 @@ public: \
     template<typename RAWBUF_M> \
     void output(RAWBUF_M& ost){ \
         rawbuf::json_output<RAWBUF_M> output_functor(ost); \
-        members_iterator<rawbuf_struct_type, 0>::iterate_with_depth(*this, output_functor, 0); \
+        members_iterator<int, 0>::iterate_with_depth(*this, output_functor, 0); \
     } \
     template<typename RAWBUF_Func> \
     void iterate(RAWBUF_Func& func_instance) { \
-		members_iterator<rawbuf_struct_type, 0 >::iterate(*this, func_instance); \
+		members_iterator<int, 0 >::iterate(*this, func_instance); \
     } \
     template<typename RAWBUF_Func> \
     void iterate_with_name(RAWBUF_Func& func_instance) { \
-        members_iterator<rawbuf_struct_type, 0 >::iterate_with_name(*this, func_instance); \
+        members_iterator<int, 0 >::iterate_with_name(*this, func_instance); \
     } \
     template<typename RAWBUF_Func> \
     void iterate_with_depth(RAWBUF_Func& func_instance, int rawbuf_depth = 0) { \
-        members_iterator<rawbuf_struct_type, 0 >::iterate_with_depth(*this, func_instance, rawbuf_depth); \
+        members_iterator<int, 0 >::iterate_with_depth(*this, func_instance, rawbuf_depth); \
     } \
 };
 
@@ -203,13 +201,13 @@ public:\
             }\
 			return result; \
         } \
-		template<rawbuf_cmd::check_cmd cmd> \
+		template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
         const char* check(){ \
             this->rawbuf_name(); \
 			if(!(*this)){ \
 				return this->error_msg(); \
 			} \
-            return  ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>&)(*this)).check<cmd>(); \
+            return  ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>*)this)->template check<RAWBUF_cmd>(RAWBUF_EMPTY); \
         } \
     };\
 
@@ -268,9 +266,9 @@ public:\
             RAWBUF_T* that = (*this)(); \
 			return that->rawbuf_name(); \
         } \
-		template<rawbuf_cmd::check_cmd cmd> \
+		template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
 		const char* check(){ \
-            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>&)(*this)).check<cmd>(); \
+            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>*)this)->template check<RAWBUF_cmd>(RAWBUF_EMPTY); \
         } \
     };\
 
@@ -279,8 +277,6 @@ public:\
 	RAW_BUF_INCREASER(optional_counter, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) ); \
     template <typename RAWBUF_T> \
     struct members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), true > : public members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), false >{ \
-        typedef typename RAWBUF_T::offset_type offset_type; \
-		typedef typename RAWBUF_T::array_count_type array_count_type; \
         typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1 > next_type; \
         typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), false > parent_type; \
         static const rawbuf_uint sizer = parent_type::sizer + sizeof(array_count_type); \
@@ -374,7 +370,7 @@ public:\
         }\
         return 0; \
     } \
-    template <rawbuf_cmd::visit_array_cmd cmd> \
+    template <rawbuf_cmd::visit_array_cmd RAWBUF_cmd> \
     array_count_type rawbuf_name() const{ \
 		if(this->_.real_optional_fields_count > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){ \
 			const offset_type *rawbuf_foffset = this->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
@@ -407,7 +403,7 @@ public:\
         rawbuf_input_type* rawbuf_name(const RAWBUF_M (&the_src)[the_array_size]) { \
 			return this->rawbuf_name(the_src, the_array_size); \
         } \
-        template <rawbuf_cmd::alloc_cmd cmd> \
+        template <rawbuf_cmd::alloc_cmd RAWBUF_cmd> \
         rawbuf_input_type* rawbuf_name(array_count_type the_array_size) { \
             RAWBUF_T* that = (*this)(); \
             offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
@@ -468,7 +464,7 @@ public:\
             }\
             return rawbuf_psize; \
 		} \
-		template <rawbuf_cmd::visit_array_cmd cmd> \
+		template <rawbuf_cmd::visit_array_cmd RAWBUF_cmd> \
 		array_count_type rawbuf_name() { \
             RAWBUF_T* that = (*this)(); \
             if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){return 0;}            /*   The field was not known by the creator.*/\
@@ -485,13 +481,13 @@ public:\
             }\
             return *rawbuf_psize; \
 		} \
-		template<rawbuf_cmd::check_cmd cmd> \
+		template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
 		const char* check(){ \
             this->rawbuf_name(); \
 			if(!(*this)){ \
 				return this->error_msg(); \
 			} \
-            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>&)(*this)).check<cmd>(); \
+            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>*)this)->template check<RAWBUF_cmd>(RAWBUF_EMPTY); \
         } \
     };\
 
@@ -501,7 +497,6 @@ public:\
 	rawbuf_input_type RAW_BUF_JOIN(rawbuf_data_required_, rawbuf_name)[real_size]; \
     template <typename RAWBUF_T> \
     struct members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), true > : public members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), false >{ \
-        typedef typename RAWBUF_T::offset_type offset_type; \
         typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1 > next_type; \
         typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), false > parent_type; \
         template<typename RAWBUF_This, typename RAWBUF_Func> \
@@ -552,7 +547,7 @@ public:\
 		}\
 		return this->RAW_BUF_JOIN(rawbuf_data_required_, rawbuf_name); \
     } \
-    template <rawbuf_cmd::visit_array_cmd cmd> \
+    template <rawbuf_cmd::visit_array_cmd RAWBUF_cmd> \
     size_t rawbuf_name() const{ \
         return real_size; \
     } \
@@ -576,9 +571,9 @@ public:\
             RAWBUF_T* that = (*this)(); \
 			return that->rawbuf_name(); \
         } \
-		template<rawbuf_cmd::check_cmd cmd> \
+		template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
 		const char* check(){ \
-            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>&)(*this)).check<cmd>(); \
+            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>*)this)->template check<RAWBUF_cmd>(RAWBUF_EMPTY); \
         } \
     };\
 
@@ -592,10 +587,10 @@ public:\
 	RAW_BUF_INCREASER(optional_counter, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) ); \
     template <typename RAWBUF_T> \
     struct members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), true > : public members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), false >{ \
-        typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1 > next_type; \
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
-			typedef typename RAWBUF_T::template type_indexer<int,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
+			typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1 > next_type; \
+			typedef typename type_indexer<RAWBUF_Func,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
             local_type* instance = this_instance.rawbuf_name(); \
             bool result = func_instance(instance); \
             if(instance != 0 && result){ \
@@ -607,7 +602,8 @@ public:\
         } \
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate_with_name(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
-			typedef typename RAWBUF_T::template type_indexer<int,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
+			typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1 > next_type; \
+			typedef typename type_indexer<RAWBUF_Func, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
             local_type* instance = this_instance.rawbuf_name(); \
             bool result = func_instance(instance, #rawbuf_name); \
             if(instance != 0 && result){ \
@@ -619,7 +615,8 @@ public:\
         } \
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate_with_depth(RAWBUF_This& this_instance, RAWBUF_Func& func_instance, int rawbuf_depth){ \
-			typedef typename RAWBUF_T::template type_indexer<int,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
+			typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1 > next_type; \
+			typedef typename type_indexer<RAWBUF_Func, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
             local_type* instance = this_instance.rawbuf_name(); \
             bool result = func_instance(instance, #rawbuf_name, rawbuf_depth); \
             if(instance != 0 && result){ \
@@ -631,6 +628,7 @@ public:\
         } \
 		template<typename RAWBUF_M> \
         static void copy(const RAWBUF_M& the_src, const rawbuf_writer<RAWBUF_T>& rawbuf_packet){ \
+			typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1 > next_type; \
             const RAWBUF_T& rawbuf_src = the_src; \
             const rawbuf_input_type* ptr = rawbuf_src.rawbuf_name(); \
             if(ptr != 0){ \
@@ -702,7 +700,7 @@ public:\
 			RAWBUF_M::template members_iterator<RAWBUF_M, 0, true>::copy(rawbuf_src, result); \
             return result; \
         } \
-        template <rawbuf_cmd::alloc_cmd cmd> \
+        template <rawbuf_cmd::alloc_cmd RAWBUF_cmd> \
         rawbuf_writer<local_type> rawbuf_name() { \
             RAWBUF_T* that = (*this)(); \
             offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
@@ -744,7 +742,7 @@ public:\
             } \
             return real_result; \
         } \
-		template<typename rawbuf_cmd::check_cmd cmd> \
+		template<typename rawbuf_cmd::check_cmd RAWBUF_cmd> \
 		const char* check(){ \
 			typedef typename RAWBUF_T::template type_indexer<int,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
             rawbuf_reader<local_type> result_further = this->rawbuf_name(); \
@@ -758,7 +756,7 @@ public:\
 					return this->error_msg(); \
 				} \
 			} \
-            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>&)(*this)).check<cmd>(); \
+            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>*)this)->template check<RAWBUF_cmd>(RAWBUF_EMPTY); \
         } \
     };\
 
@@ -801,9 +799,6 @@ public:\
 	RAW_BUF_INCREASER(optional_counter, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) ); \
     template <typename RAWBUF_T> \
     struct members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), true > : public members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), false >{ \
-        typedef typename RAWBUF_T::offset_type offset_type; \
-		typedef typename RAWBUF_T::array_count_type array_count_type; \
-		typedef typename RAWBUF_T::template type_indexer<int,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
         typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1 > next_type; \
         typedef members_iterator<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name), false > parent_type; \
         static const rawbuf_uint sizer = parent_type::sizer + sizeof(array_count_type); \
@@ -814,6 +809,7 @@ public:\
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
 			array_count_type *rawbuf_psize = rawbuf_get_array_count_pointer(&this_instance, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
+			typedef typename type_indexer<RAWBUF_Func, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
 			if(rawbuf_psize != 0) {\
                 local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(rawbuf_psize + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
 				if(func_instance(rawbuf_data, *rawbuf_psize)){ \
@@ -836,6 +832,7 @@ public:\
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate_with_name(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
 			array_count_type *rawbuf_psize = rawbuf_get_array_count_pointer(&this_instance, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
+			typedef typename type_indexer<RAWBUF_Func, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
 			if(rawbuf_psize != 0) {\
                 local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(rawbuf_psize + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
 				if(func_instance(rawbuf_data, *rawbuf_psize, #rawbuf_name)){ \
@@ -858,8 +855,9 @@ public:\
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate_with_depth(RAWBUF_This& this_instance, RAWBUF_Func& func_instance, int rawbuf_depth){ \
             array_count_type *rawbuf_psize = rawbuf_get_array_count_pointer(&this_instance, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
+			typedef typename type_indexer<RAWBUF_Func, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
 			if(rawbuf_psize != 0) {\
-                local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(rawbuf_psize + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
+				local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(rawbuf_psize + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
 				if(func_instance(rawbuf_data, *rawbuf_psize, #rawbuf_name, rawbuf_depth)){ \
 					size_t data_real_size = rawbuf_get_packet_size(rawbuf_data); \
 					char* pdata = (char*)rawbuf_data; \
@@ -881,6 +879,7 @@ public:\
         static void copy(const RAWBUF_M& the_src, const rawbuf_writer<RAWBUF_T>& rawbuf_packet){ \
             const RAWBUF_T& rawbuf_src = the_src; \
 			array_count_type *rawbuf_psize = rawbuf_get_array_count_pointer(&rawbuf_src, RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
+			typedef typename type_indexer<RAWBUF_M, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
 			if(rawbuf_psize != 0){ \
                 local_type* rawbuf_data = (local_type*)(RAW_BUF_ALIGN_TYPE((size_t)(rawbuf_psize + 1), rawbuf::rawbuf_alignment<local_type>::result, size_t)); \
 				rawbuf_packet->rawbuf_name(rawbuf_data, *rawbuf_psize); \
@@ -892,7 +891,7 @@ public:\
         } \
     }; \
 	visit_func(rawbuf_input_type, rawbuf_name) \
-    template <rawbuf_cmd::visit_array_cmd cmd> /*get_count*/\
+    template <rawbuf_cmd::visit_array_cmd RAWBUF_cmd> /*get_count*/\
     array_count_type rawbuf_name() const{ \
 		if(this->_.real_optional_fields_count > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){ \
 			const offset_type *rawbuf_foffset = this->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
@@ -927,7 +926,7 @@ public:\
             result -= the_array_size; \
             return result; \
         } \
-        template <rawbuf_cmd::alloc_cmd cmd> \
+        template <rawbuf_cmd::alloc_cmd RAWBUF_cmd> \
         rawbuf_writer_iterator<local_type> rawbuf_name(array_count_type the_array_size) { \
 			rawbuf_writer_iterator<local_type> result; \
 			result.offset = 0; /* To avoid a gcc 4.4 warning bug : https://gcc.gnu.org/bugzilla/show_bug.cgi?id=40146 */\
@@ -988,7 +987,7 @@ public:\
 			real_result.element_size = data_real_size; \
             return real_result; \
         } \
-		template <rawbuf_cmd::visit_array_cmd cmd> \
+		template <rawbuf_cmd::visit_array_cmd RAWBUF_cmd> \
 		array_count_type rawbuf_name() { \
             array_count_type *func_result = this->rawbuf_get_array_count_pointer(); \
 			return func_result ? (*func_result) : 0; \
@@ -1009,7 +1008,7 @@ public:\
             }\
             return rawbuf_psize; \
 		} \
-		template<rawbuf_cmd::check_cmd cmd> \
+		template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
 		const char* check(){ \
 			array_count_type* rawbuf_psize = this->rawbuf_get_array_count_pointer() ; \
 			if(!(*this)){ \
@@ -1043,10 +1042,9 @@ public:\
 					} \
 				} \
 			} \
-            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>&)(*this)).check<cmd>(); \
+            return ((rawbuf_reader_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) + 1>*)this)->template check<RAWBUF_cmd>(RAWBUF_EMPTY); \
         } \
     };\
-
 
 #define ADD_IMPL_INIT(rawbuf_input_type, rawbuf_name, count) \
     RAW_BUF_INCREASER(member_counter, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) ); \

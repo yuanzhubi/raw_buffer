@@ -5,10 +5,13 @@
 
 #include <stdlib.h>
 
+#define RAWBUF_EMPTY 
+
 #define RAW_BUF_ALIGN(offset, size)  ( ((offset) + (size) -1 ) & ((~((size) - 1))) )
 #define RAW_BUF_ALIGN_TYPE(offset, size, type)  ( ((type)(offset) + (type)(size) - (type)1 ) & ((type)(~((type)(size) - (type)1))) )
 #define RAW_BUF_IS_ALIGNED_PTR(ptr, size)  ( (((size_t)ptr) & (size_t(size) - size_t(1))) == 0  )
 
+#define ARGS_LIST(...) __VA_ARGS__
 
 #define RAW_BUF_JOIN2(x, y) x##y
 #define RAW_BUF_JOIN(x, y) RAW_BUF_JOIN2(x, y)

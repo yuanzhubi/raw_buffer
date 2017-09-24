@@ -1,7 +1,7 @@
 #include "rawbuffer_util.h"
 #include "rawbuffer_alignment.h"
 #include "rawbuffer_allocator.h"
-#include "rawbuffer_output_template.h"
+
 
 #include <stddef.h>
 
@@ -54,3 +54,4 @@ inline typename T::array_count_type* rawbuf_get_array_count_pointer(const T* tha
 } 
 
 #include "rawbuffer_interface.h"
+#include "rawbuffer_output_template.h"
