@@ -3,6 +3,13 @@
 #include <fstream>
 #include <assert.h>
 
+//Some related compiler bug
+//During the test, if you see warning"dereferencing pointer blabla does break strict-aliasing rules", it is a bug fixed in GCC4.5。
+//测试中如果你看到警告"dereferencing pointer blabla does break strict-aliasing rules"，请勿介意，这是一个的GCC4.5修復的bug，O2或者O3优化时会给出这个提示。
+//https://gcc.gnu.org/bugzilla/show_bug.cgi?id=39390
+//
+//https://bugs.llvm.org/show_bug.cgi?id=18009  clang-3.4 can not use our library, using clang-3.6 instead!
+
 //overload << operator to enable output of std::pair.
 //重载一下<< 操作符让std::pair支持输出到流
 template<typename L, typename R>
@@ -10,11 +17,9 @@ std::ostream& operator << (std::ostream &ost, const std::pair<L, R>& rhs) {
 	ost << "fisrt: " << rhs.first << "  " << "second: " << rhs.second;
 	return ost;
 }
-//We put the definition of the function here due to the following strange policy of clang compiler.
+//We put the definition of the function ahead due to the following strange policy of clang compiler.
 //I think it is a bug for clang but the maintainer does not.
 //https://stackoverflow.com/questions/31036530/cannot-compile-code-with-clang-but-works-with-gcc?rq=1
-
-#include "rawbuffer.h"
 
 struct mystruct0 {
 	int xx;
@@ -39,6 +44,8 @@ std::ostream& operator<< (std::ostream &ost, const mystruct0& rhs) {
 //是的，我们还可以使用延迟定义的包数据类型作为包的数据成员。
 struct test_type1;
 
+#include "rawbuffer.h"
+#include "rawbuffer_interface.h"
 
 //Between DEF_PACKET_BEGIN and DEF_PACKET_END are the data fields. test_type is the packet type name
 //在DEF_PACKET_BEGIN 和 DEF_PACKET_END之间的是包的数据成员。test_type是包的类型名字
@@ -54,7 +61,7 @@ DEF_PACKET_BEGIN(test_type)
 	//The rest fields are optional. They are son node of the current packet
 	//剩下的都是可选的字段. 他们是当前包的子节点。
 	ADD_FIELD(int, x)
-	ADD_FIELD(long long, y)	// do not use 64bit integer as required field,their alignment is not portable
+	ADD_FIELD(long long, y)	// Do not use 64bit integer as required field,their alignment is not portable
 
 	ADD_FIELD(mystruct0, z)
 	ADD_FIELD(mystruct1, w)
@@ -167,12 +174,7 @@ DEF_PACKET_END
 
 using namespace std;
 
-//Some related compiler bug
-//During the test, if you see warning"dereferencing pointer blabla does break strict-aliasing rules", it is a bug fixed in GCC4.5。
-//测试中如果你看到警告"dereferencing pointer blabla does break strict-aliasing rules"，请勿介意，这是一个的GCC4.5修復的bug，O2或者O3优化时会给出这个提示。
-//https://gcc.gnu.org/bugzilla/show_bug.cgi?id=39390
-//
-//https://bugs.llvm.org/show_bug.cgi?id=18009  clang-3.4 can not use our library
+
 
 #define OUTPUT_TEST(x) std::cout <<"Line " RAW_BUF_STRING(__LINE__) ": " RAW_BUF_STRING(x) << std::endl; x; std::cout << std::endl
 
