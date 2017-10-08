@@ -47,6 +47,10 @@ span {
 #include &lt;fstream&gt;
 #include &lt;assert.h&gt;
 </span><span class="sc0">
+</span><span class="sc9">#if defined(RAWBUF_TEST_MODE)
+#include "rawbuffer.h"
+#include "test.h"
+#else
 </span><span class="sc2">//Some related compiler bug
 //During the test, if you see warning"dereferencing pointer blabla does break strict-aliasing rules", it is a bug fixed in GCC4.5。
 //测试中如果你看到警告"dereferencing pointer blabla does break strict-aliasing rules"，请勿介意，这是一个的GCC4.5修復的bug，O2或者O3优化时会给出这个提示。
@@ -89,7 +93,6 @@ span {
 </span><span class="sc16">struct</span><span class="sc0"> </span><span class="sc11">test_type1</span><span class="sc10">;</span><span class="sc0">
 
 </span><span class="sc9">#include "rawbuffer.h"
-#include "rawbuffer_interface.h"
 </span><span class="sc0">
 </span><span class="sc2">//Between DEF_PACKET_BEGIN and DEF_PACKET_END are the data fields. test_type is the packet type name
 //在DEF_PACKET_BEGIN 和 DEF_PACKET_END之间的是包的数据成员。test_type是包的类型名字
@@ -126,7 +129,6 @@ span {
     </span><span class="sc2">//After protocol is published, we can only modify it safely by adding or removing optional fields at the back of the packet.
 </span><span class="sc0">    </span><span class="sc2">//协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。
 </span><span class="sc11">DEF_PACKET_END</span><span class="sc0">
-
 
 </span><span class="sc2">//Now lets turn to a harder one: test_type1
 //好，现在我们来点复杂的协议: test_type1。
@@ -215,6 +217,8 @@ span {
 </span><span class="sc11">DEF_PACKET_END</span><span class="sc0">
 
 </span><span class="sc9">#endif 
+</span><span class="sc0">
+</span><span class="sc9">#endif
 </span><span class="sc0">
 </span><span class="sc5">using</span><span class="sc0"> </span><span class="sc5">namespace</span><span class="sc0"> </span><span class="sc11">std</span><span class="sc10">;</span><span class="sc0">
 
@@ -321,8 +325,8 @@ span {
 </span><span class="sc0">    </span><span class="sc2">//worst assignment order and alignment cost.
 </span><span class="sc0">    </span><span class="sc2">//Reallocation can and only can happen after following cases appear (may not immediately, it may reallocate at anytime of future assignment):
 </span><span class="sc0">    </span><span class="sc2">//0: your builder is constructed with your own capacity, not default.
-</span><span class="sc0">    </span><span class="sc2">//1: you assign an optional array field with size greater than its size_estimation arguments in defination.
-</span><span class="sc0">    </span><span class="sc2">//2: you assign an optional array field with size B, then assign it again with greater size B+(even B+ is less than the size estimation).
+</span><span class="sc0">    </span><span class="sc2">//1: you assign an optional array field with size greater than its size estimation in defination.
+</span><span class="sc0">    </span><span class="sc2">//2: you re-assign an optional array.
 </span><span class="sc0">    </span><span class="sc2">//3. you assign an "any" packet (or array) field. Size of "any" fields is not including in the initial builder capacity.
 </span><span class="sc0">    </span><span class="sc2">//4. you assign a packet or array field,indirectly leading to case  1, 2, 3
 </span><span class="sc0">    </span><span class="sc2">//So the two assignment of the above codes are safe becase we do not have the above 5 behaviours till now.
@@ -332,7 +336,7 @@ span {
 </span><span class="sc0">    </span><span class="sc2">//reallocation可能也只可能在如下场景发生后发生（不一定立即发生，在此之后的任何赋值场景随时可能reallocation）：
 </span><span class="sc0">    </span><span class="sc2">//0: 你构造builder时使用了自定义的初始容量值。
 </span><span class="sc0">    </span><span class="sc2">//1: 你给一个可选数组字段，赋值的长度超过了他在定义时的长度估计。
-</span><span class="sc0">    </span><span class="sc2">//2: 你给一个可选数组字段赋值，赋值的长度为B, 然后接下来又给他重新赋值了一个长点的长度B+(即使B+比定义中的长度估计小)。
+</span><span class="sc0">    </span><span class="sc2">//2: 你给一个可选数组字段重新赋值。
 </span><span class="sc0">    </span><span class="sc2">//3: 你给一个"any"类型字段赋值。"any"类型字段的大小是没有在builder的初始容量中进行计算的。
 </span><span class="sc0">    </span><span class="sc2">//4: 你给一个packet或者packet array赋值时，间接导致了1，2，3
 </span><span class="sc0">    </span><span class="sc2">//所以上面那2行赋值代码是安全的，因为距今为止我们没有上面提到的5种行为。
@@ -378,8 +382,8 @@ span {
 </span><span class="sc0">    </span><span class="sc2">//这个赋值已经大大超过了zz在协议中定义时的长度估计, 这可能会导致instance2的重新分配空间。所有的现存的rawbuf_writer，像"packet"依然是安全的。
 </span><span class="sc0">
     </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
-    </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">zz</span><span class="sc10">(</span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc10">);</span><span class="sc0"> 
-
+    </span><span class="sc2">//instance2-&gt;zz("I say :\"Hello \\ world!\""); 
+</span><span class="sc0">
     </span><span class="sc2">//From now on, reallocation of instance2 may happen at anytime. Be careful of using the address of the assigned fields of instance2.
 </span><span class="sc0">    </span><span class="sc2">//从现在起，reallocation 随时可能发生在instance2身上。谨慎使用instance2上以赋值的成员的地址。
 </span><span class="sc0">
@@ -488,7 +492,7 @@ span {
 
     </span><span class="sc11">ifstream</span><span class="sc0"> </span><span class="sc11">test_in</span><span class="sc10">;</span><span class="sc0">
     </span><span class="sc11">test_in</span><span class="sc10">.</span><span class="sc11">open</span><span class="sc10">(</span><span class="sc6">"./test.data"</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">ios_base</span><span class="sc10">::</span><span class="sc11">binary</span><span class="sc0"> </span><span class="sc10">|</span><span class="sc0"> </span><span class="sc11">ios_base</span><span class="sc10">::</span><span class="sc11">in</span><span class="sc0"> </span><span class="sc10">|</span><span class="sc0"> </span><span class="sc11">ios_base</span><span class="sc10">::</span><span class="sc11">ate</span><span class="sc10">);</span><span class="sc0">
-    </span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">streamoff</span><span class="sc0"> </span><span class="sc11">length</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">test_in</span><span class="sc10">.</span><span class="sc11">tellg</span><span class="sc10">();</span><span class="sc0">
+    </span><span class="sc16">size_t</span><span class="sc0"> </span><span class="sc11">length</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc10">(</span><span class="sc16">size_t</span><span class="sc10">)</span><span class="sc11">test_in</span><span class="sc10">.</span><span class="sc11">tellg</span><span class="sc10">();</span><span class="sc0">
     </span><span class="sc11">test_in</span><span class="sc10">.</span><span class="sc11">seekg</span><span class="sc0"> </span><span class="sc10">(</span><span class="sc4">0</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">test_in</span><span class="sc10">.</span><span class="sc11">beg</span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc11">test_in</span><span class="sc10">.</span><span class="sc11">read</span><span class="sc10">(</span><span class="sc11">buffer</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">length</span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc16">const</span><span class="sc0"> </span><span class="sc16">char</span><span class="sc10">*</span><span class="sc0"> </span><span class="sc11">error_msg</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">rawbuf_has_error</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">&gt;(</span><span class="sc11">buffer</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">length</span><span class="sc10">);</span><span class="sc0"> 
@@ -602,7 +606,10 @@ span {
     
     </span><span class="sc2">//Now lets talk about the safely visiting the packet array via subclass of reader:rawbuf_reader_iterator
 </span><span class="sc0">    </span><span class="sc2">//现在我们再来谈谈如何通过reader的子类rawbuf_reader_iterator来安全的访问包数组
-</span><span class="sc0">    </span><span class="sc11">reader2</span><span class="sc10">.</span><span class="sc11">init</span><span class="sc10">(</span><span class="sc11">buffer</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">length</span><span class="sc10">);</span><span class="sc0">
+</span><span class="sc0">    </span><span class="sc5">if</span><span class="sc0"> </span><span class="sc10">(!</span><span class="sc11">reader2</span><span class="sc10">.</span><span class="sc11">init</span><span class="sc10">(</span><span class="sc11">buffer</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">length</span><span class="sc10">))</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
+        </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">reader2</span><span class="sc10">-&gt;</span><span class="sc11">error_msg</span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
+        </span><span class="sc11">exit</span><span class="sc10">(-</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc10">}</span><span class="sc0">
     </span><span class="sc11">test_type1</span><span class="sc10">::</span><span class="sc11">array_count_type</span><span class="sc0"> </span><span class="sc11">psize</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">reader2</span><span class="sc10">-&gt;</span><span class="sc11">uu</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">::</span><span class="sc11">get_count</span><span class="sc10">&gt;();</span><span class="sc0">
     </span><span class="sc5">if</span><span class="sc10">(</span><span class="sc11">psize</span><span class="sc0"> </span><span class="sc10">!=</span><span class="sc0"> </span><span class="sc4">0</span><span class="sc0"> </span><span class="sc10">){</span><span class="sc0">
         </span><span class="sc11">rawbuf_reader_iterator</span><span class="sc10">&lt;</span><span class="sc11">test_type</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">uu</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0">  </span><span class="sc11">reader2</span><span class="sc10">-&gt;</span><span class="sc11">uu</span><span class="sc10">();</span><span class="sc0"> </span><span class="sc2">//reader2-&gt;uu() does not check the fields of uu.
@@ -626,21 +633,28 @@ span {
 </span><span class="sc0">
     </span><span class="sc11">rawbuf_reader</span><span class="sc10">&lt;</span><span class="sc11">test_type2</span><span class="sc10">&lt;</span><span class="sc16">int</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">reader4</span><span class="sc10">;</span><span class="sc0">
     </span><span class="sc11">reader4</span><span class="sc10">.</span><span class="sc11">init</span><span class="sc10">(</span><span class="sc11">instance4</span><span class="sc10">.</span><span class="sc11">data</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc11">instance4</span><span class="sc10">.</span><span class="sc11">size</span><span class="sc10">());</span><span class="sc0">
+    </span><span class="sc5">if</span><span class="sc0"> </span><span class="sc10">(!</span><span class="sc11">reader4</span><span class="sc10">.</span><span class="sc11">init</span><span class="sc10">(</span><span class="sc11">instance4</span><span class="sc10">.</span><span class="sc11">data</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc11">instance4</span><span class="sc10">.</span><span class="sc11">size</span><span class="sc10">()))</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
+        </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">reader4</span><span class="sc10">-&gt;</span><span class="sc11">error_msg</span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
+        </span><span class="sc11">exit</span><span class="sc10">(-</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc10">}</span><span class="sc0">
     </span><span class="sc5">if</span><span class="sc0"> </span><span class="sc10">(!</span><span class="sc11">rawbuf_has_error</span><span class="sc10">(</span><span class="sc11">reader4</span><span class="sc10">))</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
         </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">reader4</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
     </span><span class="sc10">}</span><span class="sc0">
     </span><span class="sc5">else</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
-        </span><span class="sc11">cerr</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc6">"reader4:"</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">reader4</span><span class="sc10">-&gt;</span><span class="sc11">error_msg</span><span class="sc10">();</span><span class="sc0">
+        </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc6">"reader4:"</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">reader4</span><span class="sc10">-&gt;</span><span class="sc11">error_msg</span><span class="sc10">();</span><span class="sc0">
         </span><span class="sc11">exit</span><span class="sc10">(-</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc10">}</span><span class="sc0">
 
     </span><span class="sc11">rawbuf_reader</span><span class="sc10">&lt;</span><span class="sc11">test_type2</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">reader5</span><span class="sc10">;</span><span class="sc0">
-    </span><span class="sc11">reader5</span><span class="sc10">.</span><span class="sc11">init</span><span class="sc10">(</span><span class="sc11">instance5</span><span class="sc10">.</span><span class="sc11">data</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc11">instance5</span><span class="sc10">.</span><span class="sc11">size</span><span class="sc10">());</span><span class="sc0">
+    </span><span class="sc5">if</span><span class="sc0"> </span><span class="sc10">(!</span><span class="sc11">reader5</span><span class="sc10">.</span><span class="sc11">init</span><span class="sc10">(</span><span class="sc11">instance5</span><span class="sc10">.</span><span class="sc11">data</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc11">instance5</span><span class="sc10">.</span><span class="sc11">size</span><span class="sc10">()))</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
+        </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">reader5</span><span class="sc10">-&gt;</span><span class="sc11">error_msg</span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
+        </span><span class="sc11">exit</span><span class="sc10">(-</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc10">}</span><span class="sc0">
     </span><span class="sc5">if</span><span class="sc0"> </span><span class="sc10">(!</span><span class="sc11">rawbuf_has_error</span><span class="sc10">(</span><span class="sc11">reader5</span><span class="sc10">))</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
         </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">reader5</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
     </span><span class="sc10">}</span><span class="sc0">
     </span><span class="sc5">else</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
-        </span><span class="sc11">cerr</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc6">"reader5:"</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">reader5</span><span class="sc10">-&gt;</span><span class="sc11">error_msg</span><span class="sc10">();</span><span class="sc0">
+        </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc6">"reader5:"</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">reader5</span><span class="sc10">-&gt;</span><span class="sc11">error_msg</span><span class="sc10">();</span><span class="sc0">
         </span><span class="sc11">exit</span><span class="sc10">(-</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc10">}</span><span class="sc0">
 
@@ -649,7 +663,7 @@ span {
     </span><span class="sc2">//Finally we can examine the packet size
 </span><span class="sc0">    </span><span class="sc2">//最后我们看看这一个包的真正大小
 </span><span class="sc0">    </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc6">"size:"</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">.</span><span class="sc11">size</span><span class="sc0"> </span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
-    </span><span class="sc2">//Till now it is 2076.
+    </span><span class="sc2">//Till now it is 1964.
 </span><span class="sc0">    </span><span class="sc5">return</span><span class="sc0"> </span><span class="sc4">0</span><span class="sc10">;</span><span class="sc0">
 </span><span class="sc10">}</span><span class="sc0">
 </span></div></body>
