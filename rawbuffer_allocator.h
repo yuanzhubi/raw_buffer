@@ -58,6 +58,30 @@ public:
         return (RAWBUF_T*)(this->data_ptr + new_offset);
     }
 
+    template <typename RAWBUF_T, typename RAWBUF_M >
+    char* append_varint(RAWBUF_T src, RAWBUF_M* offset_pointer) {
+        const size_t new_offset_count = this->data_size;
+        const size_t new_offset = (new_offset_count + sizeof(RAWBUF_T) + 1);
+        const size_t offset_diff = this->data_ptr - (char*)offset_pointer + this->data_size;
+
+        if (sizeof(RAWBUF_M) <= 2 && offset_diff > size_t((RAWBUF_M)(-1))) {
+            return 0;
+        }
+
+        size_t tmp_data_size = new_offset;
+        *offset_pointer = (RAWBUF_M)offset_diff;
+
+        if (tmp_data_size > this->data_capacity) {
+            size_t new_capacity = tmp_data_size << 1;
+            this->data_capacity = new_capacity;
+            this->data_ptr = (char*)realloc(this->data_ptr, new_capacity);
+        }
+        
+        char *result = rawbuf::rawbuf_varint<RAWBUF_T>::encode(src, this->data_ptr + new_offset_count);
+        this->data_size = result - this->data_ptr;
+        return result;
+    }
+
     template <typename RAWBUF_T, typename RAWBUF_M, typename RAWBUF_A > /*count|values*/
     RAWBUF_T* append(const RAWBUF_T* src, RAWBUF_A count, RAWBUF_M* offset_pointer) {
         const static size_t align_count = rawbuf::rawbuf_alignment<RAWBUF_T>::result;

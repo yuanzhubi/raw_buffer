@@ -6,7 +6,7 @@
 namespace rawbuf{
 
     template <rawbuf_int32 aligned_1x, rawbuf_int32 aligned_2x, rawbuf_int32 aligned_4x, rawbuf_int32 aligned_8x,
-                /*rawbuf_int32 aligned_16x,*/ rawbuf_int32 offset > //16bytes alignment was not supported.
+                /*rawbuf_int32 aligned_16x,*/ rawbuf_int32 offset > //16bytes alignment was not supported now.
     struct max_align_cost{
         //either (padding)  min, max, min, max, min, max .....or (padding)  max, min, max, min, max,min ..... layout cost the most spaces.
         //For example:  char(1), long double(16), char(1), long long(8), short(2), int(4),,,,,int(4), short(2), int(4), int(4)

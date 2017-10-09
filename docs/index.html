@@ -56,7 +56,7 @@ span {
 //测试中如果你看到警告"dereferencing pointer blabla does break strict-aliasing rules"，请勿介意，这是一个的GCC4.5修復的bug，O2或者O3优化时会给出这个提示。
 //https://gcc.gnu.org/bugzilla/show_bug.cgi?id=39390
 //
-//https://bugs.llvm.org/show_bug.cgi?id=18009  clang-3.4 can not use our library, using clang-3.6 instead!
+//https://bugs.llvm.org/show_bug.cgi?id=18009  clang-3.4 can not use our library, using clang-3.5 instead!
 </span><span class="sc0">
 </span><span class="sc2">//overload &lt;&lt; operator to enable output of std::pair.
 //重载一下&lt;&lt; 操作符让std::pair支持输出到流
@@ -113,6 +113,20 @@ span {
     </span><span class="sc11">ADD_FIELD</span><span class="sc10">(</span><span class="sc11">mystruct0</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">z</span><span class="sc10">)</span><span class="sc0">
     </span><span class="sc11">ADD_FIELD</span><span class="sc10">(</span><span class="sc11">mystruct1</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">w</span><span class="sc10">)</span><span class="sc0">
 
+    </span><span class="sc2">//You can use variable-length integer, but it can not be accessed by pointer. So we need a default value
+</span><span class="sc0">    </span><span class="sc2">//for it is NULL. The defualt value should be the most usual number for the field.
+</span><span class="sc0">    </span><span class="sc2">//你可以使用变长整数，但是这就没法通过指针去访问数据了。所以你需要定义一个默认值来对付他没被赋值的场景。
+</span><span class="sc0">    </span><span class="sc2">//这个默认值最好是一个对于这个字段最频繁出现的数值。
+</span><span class="sc0">    </span><span class="sc11">ADD_VAR_INT</span><span class="sc10">(</span><span class="sc16">unsigned</span><span class="sc0"> </span><span class="sc16">int</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">o</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">1</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_VAR_INT</span><span class="sc10">(</span><span class="sc16">int</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">p</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">1</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_VAR_INT</span><span class="sc10">(</span><span class="sc16">long</span><span class="sc0"> </span><span class="sc16">long</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">q</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">2</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc2">//We store X - default for value X in fact. X - default is compressed as protobuf varint.
+</span><span class="sc0">    </span><span class="sc2">//We store 0 for o if o=1, store 4 for o if o=5, store -1 for o if o=0 (costing the most storage for the unsigned int!)。
+</span><span class="sc0">    </span><span class="sc2">//So be careful when the default value is not zero!
+</span><span class="sc0">    </span><span class="sc2">//当你赋值X的时候，我们实际会把X - default来仿照protobuf的存储格式来压缩存储
+</span><span class="sc0">    </span><span class="sc2">//如果你给o赋值1， 我们按0来存储；赋值5我们按4来存储；赋值0我们按-1来存储(对于无符号整数来说，这会消耗最多的字节数!!)。
+</span><span class="sc0">    </span><span class="sc2">//所以如果设置默认值不为0的时候要小心!
+</span><span class="sc0">
     </span><span class="sc2">//"ANY" field definition can be used for any other packet type that even only declared.
 </span><span class="sc0">    </span><span class="sc2">//It does not lose any performanse but we can not estimate the packet(test_type) max size at compiling time.
 </span><span class="sc0">    </span><span class="sc2">//"ANY" 式的成员定义可以用于任何其他仅仅有声明的包类型。
@@ -248,7 +262,11 @@ span {
 </span><span class="sc0">    </span><span class="sc11">instance</span><span class="sc10">-&gt;</span><span class="sc11">x</span><span class="sc10">(</span><span class="sc4">0</span><span class="sc10">);</span><span class="sc0">                 
     </span><span class="sc11">instance</span><span class="sc10">-&gt;</span><span class="sc11">y</span><span class="sc10">(</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc11">instance</span><span class="sc10">-&gt;</span><span class="sc11">a</span><span class="sc10">(</span><span class="sc4">2</span><span class="sc10">);</span><span class="sc0">
-    
+
+    </span><span class="sc11">instance</span><span class="sc10">-&gt;</span><span class="sc11">o</span><span class="sc10">((</span><span class="sc16">unsigned</span><span class="sc0"> </span><span class="sc16">int</span><span class="sc10">)-</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">instance</span><span class="sc10">-&gt;</span><span class="sc11">p</span><span class="sc10">(</span><span class="sc4">130</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">instance</span><span class="sc10">-&gt;</span><span class="sc11">q</span><span class="sc10">(</span><span class="sc4">0x100010001ll</span><span class="sc10">);</span><span class="sc0"> </span><span class="sc2">//4295032833
+</span><span class="sc0">    
      </span><span class="sc2">//() operator always results a raw pointer(of test_type), required fields can assigend via the raw pointer and a little quicker（can be ignored in fact）
 </span><span class="sc0">     </span><span class="sc2">//()操作符会返回一个原生的（test_type）指针，必须的字段可以通过原生指针进行赋值, 会快一点点（简直可以忽略）
 </span><span class="sc0">    </span><span class="sc11">instance</span><span class="sc10">()-&gt;</span><span class="sc11">a</span><span class="sc10">(</span><span class="sc4">3</span><span class="sc10">);</span><span class="sc0">
@@ -284,21 +302,21 @@ span {
 </span><span class="sc0">    </span><span class="sc11">rawbuf_writer</span><span class="sc10">&lt;</span><span class="sc11">test_type</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">packet</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">xx</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">::</span><span class="sc11">alloc</span><span class="sc10">&gt;();</span><span class="sc0">
     </span><span class="sc2">//rawbuf_writer is the base class of rawbuf_builder, which provides the data assignment and visiting function shown above.
 </span><span class="sc0">    </span><span class="sc2">//rawbuf_writer 是rawbuf_builder的基类，提供了前面所展示的所有数据访问和赋值功能。
-</span><span class="sc0">
+</span><span class="sc0">    
     </span><span class="sc11">packet</span><span class="sc10">-&gt;</span><span class="sc11">x</span><span class="sc10">(</span><span class="sc4">5</span><span class="sc10">);</span><span class="sc0">                                   
     </span><span class="sc11">packet</span><span class="sc10">-&gt;</span><span class="sc11">w</span><span class="sc10">(</span><span class="sc11">t1</span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">yy</span><span class="sc10">(</span><span class="sc4">6</span><span class="sc10">);</span><span class="sc0">
-
+    
     </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">aa</span><span class="sc10">(</span><span class="sc6">"Sorry!"</span><span class="sc10">);</span><span class="sc0">            </span><span class="sc2">//We support array direct assignment!
 </span><span class="sc0">    </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">aa</span><span class="sc10">(</span><span class="sc6">"Sorry!"</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">7</span><span class="sc10">);</span><span class="sc0">         </span><span class="sc2">//Same effection...
-</span><span class="sc0">
+</span><span class="sc0">    
     </span><span class="sc11">memcpy</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">aa</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc6">"Sorry!"</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">7</span><span class="sc10">);</span><span class="sc0">     </span><span class="sc2">//It is safe as the size of aa is 12.
 </span><span class="sc0">    </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">zz</span><span class="sc10">(</span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc10">);</span><span class="sc0">
-
+    
     </span><span class="sc16">int</span><span class="sc0"> </span><span class="sc11">tester</span><span class="sc10">[]</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc4">4</span><span class="sc10">,</span><span class="sc4">5</span><span class="sc10">};</span><span class="sc0">
     </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">bb</span><span class="sc10">(</span><span class="sc11">tester</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">2</span><span class="sc10">);</span><span class="sc0">       </span><span class="sc2">//The length of bb is still 3(the length of the required array is always fixed!), but we modify its first and second value.
 </span><span class="sc0">    </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">cc</span><span class="sc10">(</span><span class="sc11">tester</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">2</span><span class="sc10">);</span><span class="sc0">       </span><span class="sc2">//The length of cc is 2(the length of the optional array is depending on the assignment!).
-</span><span class="sc0">
+</span><span class="sc0">    
     </span><span class="sc2">//The writer can not used for reading. You can use () to cast it to raw pointer to visit address of assigned field, like instance2()-&gt;bb().
 </span><span class="sc0">    </span><span class="sc2">//instance2() return a test_type1 pointer and -&gt;bb() return its the address of field bb
 </span><span class="sc0">    </span><span class="sc2">//However the pointers may become invalid after further assginment of the owned builder or writer due to reallocation. 
@@ -320,6 +338,7 @@ span {
 </span><span class="sc0">    
     </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">bb</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">yy</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">        
     </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">cc</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">bb</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
+    
     </span><span class="sc2">//Is the above codes safe? In fact raw_buffer has tried best to avoid reallocation. The defualt initial builder capacity can afford
 </span><span class="sc0">    </span><span class="sc2">//all the required and "non-any" optional fields size (size of optional array data based on the size_estimation arguments) and
 </span><span class="sc0">    </span><span class="sc2">//worst assignment order and alignment cost.
@@ -362,14 +381,14 @@ span {
         </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc6">"Add reference must succeed!"</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
     </span><span class="sc10">}</span><span class="sc0">
     </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
-
+    
     </span><span class="sc2">//Now we create packet node ww directly via assignment.
 </span><span class="sc0">    </span><span class="sc2">//* operator return the reference of the raw pointer
 </span><span class="sc0">    </span><span class="sc2">//现在我们通过赋值来创建非根节点ww
 </span><span class="sc0">    </span><span class="sc2">//* 操作符返回原生指针的引用。
 </span><span class="sc0">    </span><span class="sc11">packet</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">ww</span><span class="sc10">(*</span><span class="sc11">instance</span><span class="sc10">);</span><span class="sc0">  </span><span class="sc2">//*instance == *(instance())
 </span><span class="sc0">    </span><span class="sc11">packet</span><span class="sc10">-&gt;</span><span class="sc11">w</span><span class="sc10">(</span><span class="sc11">t1</span><span class="sc10">);</span><span class="sc0">
-
+    
     </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">zz</span><span class="sc10">(</span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0">
                   </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0">
                   </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0"> </span><span class="sc6">"I say :\"Hello \\ world!\""</span><span class="sc0">
@@ -380,7 +399,7 @@ span {
                   </span><span class="sc10">);</span><span class="sc0"> 
     </span><span class="sc2">//This assignment size is far beyond the size estimation of zz defined in protocol and it may lead to reallocation of instance2. But every writer like "packet" is safe.
 </span><span class="sc0">    </span><span class="sc2">//这个赋值已经大大超过了zz在协议中定义时的长度估计, 这可能会导致instance2的重新分配空间。所有的现存的rawbuf_writer，像"packet"依然是安全的。
-</span><span class="sc0">
+</span><span class="sc0">    
     </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
     </span><span class="sc2">//instance2-&gt;zz("I say :\"Hello \\ world!\""); 
 </span><span class="sc0">
@@ -392,12 +411,14 @@ span {
 </span><span class="sc0">    </span><span class="sc2">//instance2.reserve(instance2.size()*8);     //No matter how much the capcity is, it will be exhausted
 </span><span class="sc0">    </span><span class="sc2">//instance2-&gt;vv(*instance2);                // And *instance2 must be an invalid reference finally.
 </span><span class="sc0">
-    </span><span class="sc2">//So we need to copy to other builder first.
+    </span><span class="sc2">//So we need to copy to another builder first.
 </span><span class="sc0">    </span><span class="sc11">rawbuf_builder</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">instance3</span><span class="sc10">;</span><span class="sc0">
-    </span><span class="sc11">instance3</span><span class="sc10">-&gt;</span><span class="sc11">copy</span><span class="sc10">(*</span><span class="sc11">instance2</span><span class="sc10">);</span><span class="sc0">
-    </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">vv</span><span class="sc10">(*</span><span class="sc11">instance3</span><span class="sc10">);</span><span class="sc0">
-    </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
 
+    </span><span class="sc11">instance3</span><span class="sc10">-&gt;</span><span class="sc11">copy</span><span class="sc10">(*</span><span class="sc11">instance2</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">vv</span><span class="sc10">(*</span><span class="sc11">instance3</span><span class="sc10">)-&gt;</span><span class="sc11">ww</span><span class="sc10">&lt;</span><span class="sc11">test_type</span><span class="sc10">::</span><span class="sc11">alloc</span><span class="sc10">&gt;()-&gt;</span><span class="sc11">p</span><span class="sc10">(</span><span class="sc4">2097152</span><span class="sc10">+</span><span class="sc4">8</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc2">//vv.ww.p is assigned!
+</span><span class="sc0">    </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
+    
     </span><span class="sc2">//Now we try re-assignment the packet node.
 </span><span class="sc0">    </span><span class="sc2">//现在我们来试试对已经赋值的节点重新赋值
 </span><span class="sc0">    </span><span class="sc11">packet</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">ww</span><span class="sc10">(*</span><span class="sc11">instance</span><span class="sc10">);</span><span class="sc0">  
@@ -405,7 +426,11 @@ span {
 </span><span class="sc0">    </span><span class="sc2">//is waste as that memory becomes a "memory fragment" and for time efficiency, we will not try to reuse it. 
 </span><span class="sc0">    </span><span class="sc2">//So be careful for using re-assignment for all optional fields!
 </span><span class="sc0">    </span><span class="sc2">//instance2的ww字段的w字段现在变成了空，而且刚才w占据的空间出于时间效率会被浪费掉了而不会被重用。所以谨慎使用对可选成员重新赋值这个功能。
-</span><span class="sc0">     
+</span><span class="sc0">
+    </span><span class="sc11">packet</span><span class="sc10">-&gt;</span><span class="sc11">p</span><span class="sc10">(</span><span class="sc4">65539</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">packet</span><span class="sc10">-&gt;</span><span class="sc11">o</span><span class="sc10">(</span><span class="sc4">272629760</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">packet</span><span class="sc10">-&gt;</span><span class="sc11">q</span><span class="sc10">(</span><span class="sc4">0x1000000000000002</span><span class="sc10">);</span><span class="sc0"> </span><span class="sc2">//1152921504606846978
+</span><span class="sc0">    
     </span><span class="sc2">//The allocation or assignment of the packet array will return a rawbuf_writer_iterator, a sub-class of rawbuf_writer at the begin element.
 </span><span class="sc0">    </span><span class="sc2">//It supports the increament, [] or other pointer "shifting" operation. It becomes like a real pointer.
 </span><span class="sc0">    </span><span class="sc2">//对于包的数组的赋值或者分配会返回一个rawbuf_writer_iterator，他是rawbuf_writer的子类并位于数组第一个元素。
@@ -419,7 +444,7 @@ span {
     </span><span class="sc10">(</span><span class="sc11">it</span><span class="sc10">++)-&gt;</span><span class="sc11">y</span><span class="sc10">(</span><span class="sc4">3</span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc10">(</span><span class="sc11">it</span><span class="sc10">--)-&gt;</span><span class="sc11">a</span><span class="sc10">(</span><span class="sc4">3</span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc2">//(it+1)-&gt;a(2);  it is not supported because we have supported cast it to bool type, so it will lead to ambigious warning in GCC.
-</span><span class="sc0">
+</span><span class="sc0">    
     </span><span class="sc2">//Even you use raw pointer to visit, you also get an iterator to iterate the packet array.
 </span><span class="sc0">    </span><span class="sc2">//Becuase the content pointed by raw data maybe from outer data and its packet element may have different sizeof(test_type).
 </span><span class="sc0">    </span><span class="sc2">//Using ()operator to get raw pointer
@@ -434,7 +459,7 @@ span {
 </span><span class="sc0">    </span><span class="sc11">rawbuf_writer_iterator</span><span class="sc10">&lt;</span><span class="sc11">test_type</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">itt</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">tt</span><span class="sc10">(</span><span class="sc11">instance</span><span class="sc10">(),</span><span class="sc0"> </span><span class="sc4">1</span><span class="sc0">
         </span><span class="sc10">);</span><span class="sc0">
     </span><span class="sc11">itt</span><span class="sc10">-&gt;</span><span class="sc11">a</span><span class="sc10">(-</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
-
+    
     </span><span class="sc2">//Now we will exam the "any" type field whether they are the same as "non-any" type
 </span><span class="sc0">    </span><span class="sc2">//现在我们检查下ANY类型的成员是否和非ANY类型的使用完全相同
 </span><span class="sc0">    </span><span class="sc11">rawbuf_writer_iterator</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">itd</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">-&gt;</span><span class="sc11">dd</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">::</span><span class="sc11">alloc</span><span class="sc10">&gt;(</span><span class="sc4">2</span><span class="sc10">);</span><span class="sc0">
@@ -448,7 +473,7 @@ span {
 </span><span class="sc0">    </span><span class="sc2">//这是兼容C++03的代价。
 </span><span class="sc0">    </span><span class="sc11">itt</span><span class="sc10">()-&gt;</span><span class="sc11">v</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">&gt;();</span><span class="sc0"> 
     </span><span class="sc11">itd</span><span class="sc10">-&gt;</span><span class="sc11">vv</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">::</span><span class="sc11">add_ref</span><span class="sc10">&gt;(</span><span class="sc11">itt</span><span class="sc10">()-&gt;</span><span class="sc11">v</span><span class="sc10">&lt;</span><span class="sc11">test_type1</span><span class="sc10">&gt;()());</span><span class="sc0">
-
+    
     </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance2</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
 </span><span class="sc9">#ifdef RAWBUF_ENABLE_TEMPLATE_PACKET
 </span><span class="sc0">    </span><span class="sc2">//Now look at the template packet
@@ -664,7 +689,8 @@ span {
 </span><span class="sc0">    </span><span class="sc2">//最后我们看看这一个包的真正大小
 </span><span class="sc0">    </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc6">"size:"</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">instance2</span><span class="sc10">.</span><span class="sc11">size</span><span class="sc0"> </span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
     </span><span class="sc2">//Till now it is 1964.
-</span><span class="sc0">    </span><span class="sc5">return</span><span class="sc0"> </span><span class="sc4">0</span><span class="sc10">;</span><span class="sc0">
+</span><span class="sc0">
+    </span><span class="sc5">return</span><span class="sc0"> </span><span class="sc4">0</span><span class="sc10">;</span><span class="sc0">
 </span><span class="sc10">}</span><span class="sc0">
 </span></div></body>
 </html>

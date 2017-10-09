@@ -12,7 +12,7 @@
 //测试中如果你看到警告"dereferencing pointer blabla does break strict-aliasing rules"，请勿介意，这是一个的GCC4.5修復的bug，O2或者O3优化时会给出这个提示。
 //https://gcc.gnu.org/bugzilla/show_bug.cgi?id=39390
 //
-//https://bugs.llvm.org/show_bug.cgi?id=18009  clang-3.4 can not use our library, using clang-3.6 instead!
+//https://bugs.llvm.org/show_bug.cgi?id=18009  clang-3.4 can not use our library, using clang-3.5 instead!
 
 //overload << operator to enable output of std::pair.
 //重载一下<< 操作符让std::pair支持输出到流
@@ -68,6 +68,20 @@ DEF_PACKET_BEGIN(test_type)
 
     ADD_FIELD(mystruct0, z)
     ADD_FIELD(mystruct1, w)
+
+    //You can use variable-length integer, but it can not be accessed by pointer. So we need a default value
+    //for it is NULL. The defualt value should be the most usual number for the field.
+    //你可以使用变长整数，但是这就没法通过指针去访问数据了。所以你需要定义一个默认值来对付他没被赋值的场景。
+    //这个默认值最好是一个对于这个字段最频繁出现的数值。
+    ADD_VAR_INT(unsigned int, o, 1)
+    ADD_VAR_INT(int, p, 1)
+    ADD_VAR_INT(long long, q, 2)
+    //We store X - default for value X in fact. X - default is compressed as protobuf varint.
+    //We store 0 for o if o=1, store 4 for o if o=5, store -1 for o if o=0 (costing the most storage for the unsigned int!)。
+    //So be careful when the default value is not zero!
+    //当你赋值X的时候，我们实际会把X - default来仿照protobuf的存储格式来压缩存储
+    //如果你给o赋值1， 我们按0来存储；赋值5我们按4来存储；赋值0我们按-1来存储(对于无符号整数来说，这会消耗最多的字节数!!)。
+    //所以如果设置默认值不为0的时候要小心!
 
     //"ANY" field definition can be used for any other packet type that even only declared.
     //It does not lose any performanse but we can not estimate the packet(test_type) max size at compiling time.
@@ -204,6 +218,10 @@ int main(){
     instance->x(0);                 
     instance->y(1);
     instance->a(2);
+
+    instance->o((unsigned int)-1);
+    instance->p(130);
+    instance->q(0x100010001ll); //4295032833
     
      //() operator always results a raw pointer(of test_type), required fields can assigend via the raw pointer and a little quicker（can be ignored in fact）
      //()操作符会返回一个原生的（test_type）指针，必须的字段可以通过原生指针进行赋值, 会快一点点（简直可以忽略）
@@ -240,21 +258,21 @@ int main(){
     rawbuf_writer<test_type> packet = instance2->xx<test_type1::alloc>();
     //rawbuf_writer is the base class of rawbuf_builder, which provides the data assignment and visiting function shown above.
     //rawbuf_writer 是rawbuf_builder的基类，提供了前面所展示的所有数据访问和赋值功能。
-
+    
     packet->x(5);                                   
     packet->w(t1);
     instance2->yy(6);
-
+    
     instance2->aa("Sorry!");            //We support array direct assignment!
     instance2->aa("Sorry!", 7);         //Same effection...
-
+    
     memcpy(instance2()->aa(), "Sorry!", 7);     //It is safe as the size of aa is 12.
     instance2->zz("I say :\"Hello \\ world!\"");
-
+    
     int tester[] = {4,5};
     instance2->bb(tester, 2);       //The length of bb is still 3(the length of the required array is always fixed!), but we modify its first and second value.
     instance2->cc(tester, 2);       //The length of cc is 2(the length of the optional array is depending on the assignment!).
-
+    
     //The writer can not used for reading. You can use () to cast it to raw pointer to visit address of assigned field, like instance2()->bb().
     //instance2() return a test_type1 pointer and ->bb() return its the address of field bb
     //However the pointers may become invalid after further assginment of the owned builder or writer due to reallocation. 
@@ -276,6 +294,7 @@ int main(){
     
     instance2->bb(instance2()->yy(), 1);        
     instance2->cc(instance2()->bb(), 1);
+    
     //Is the above codes safe? In fact raw_buffer has tried best to avoid reallocation. The defualt initial builder capacity can afford
     //all the required and "non-any" optional fields size (size of optional array data based on the size_estimation arguments) and
     //worst assignment order and alignment cost.
@@ -318,14 +337,14 @@ int main(){
         cout << "Add reference must succeed!" << endl;
     }
     OUTPUT_TEST(instance2()->output(std::cout));
-
+    
     //Now we create packet node ww directly via assignment.
     //* operator return the reference of the raw pointer
     //现在我们通过赋值来创建非根节点ww
     //* 操作符返回原生指针的引用。
     packet = instance2->ww(*instance);  //*instance == *(instance())
     packet->w(t1);
-
+    
     instance2->zz("I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\""
                   "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\""
                   "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\"" "I say :\"Hello \\ world!\""
@@ -336,7 +355,7 @@ int main(){
                   ); 
     //This assignment size is far beyond the size estimation of zz defined in protocol and it may lead to reallocation of instance2. But every writer like "packet" is safe.
     //这个赋值已经大大超过了zz在协议中定义时的长度估计, 这可能会导致instance2的重新分配空间。所有的现存的rawbuf_writer，像"packet"依然是安全的。
-
+    
     OUTPUT_TEST(instance2()->output(std::cout));
     //instance2->zz("I say :\"Hello \\ world!\""); 
 
@@ -348,12 +367,14 @@ int main(){
     //instance2.reserve(instance2.size()*8);     //No matter how much the capcity is, it will be exhausted
     //instance2->vv(*instance2);                // And *instance2 must be an invalid reference finally.
 
-    //So we need to copy to other builder first.
+    //So we need to copy to another builder first.
     rawbuf_builder<test_type1> instance3;
-    instance3->copy(*instance2);
-    instance2->vv(*instance3);
-    OUTPUT_TEST(instance2()->output(std::cout));
 
+    instance3->copy(*instance2);
+    instance2->vv(*instance3)->ww<test_type::alloc>()->p(2097152+8);
+    //vv.ww.p is assigned!
+    OUTPUT_TEST(instance2()->output(std::cout));
+    
     //Now we try re-assignment the packet node.
     //现在我们来试试对已经赋值的节点重新赋值
     packet = instance2->ww(*instance);  
@@ -361,7 +382,11 @@ int main(){
     //is waste as that memory becomes a "memory fragment" and for time efficiency, we will not try to reuse it. 
     //So be careful for using re-assignment for all optional fields!
     //instance2的ww字段的w字段现在变成了空，而且刚才w占据的空间出于时间效率会被浪费掉了而不会被重用。所以谨慎使用对可选成员重新赋值这个功能。
-     
+
+    packet->p(65539);
+    packet->o(272629760);
+    packet->q(0x1000000000000002); //1152921504606846978
+    
     //The allocation or assignment of the packet array will return a rawbuf_writer_iterator, a sub-class of rawbuf_writer at the begin element.
     //It supports the increament, [] or other pointer "shifting" operation. It becomes like a real pointer.
     //对于包的数组的赋值或者分配会返回一个rawbuf_writer_iterator，他是rawbuf_writer的子类并位于数组第一个元素。
@@ -375,7 +400,7 @@ int main(){
     (it++)->y(3);
     (it--)->a(3);
     //(it+1)->a(2);  it is not supported because we have supported cast it to bool type, so it will lead to ambigious warning in GCC.
-
+    
     //Even you use raw pointer to visit, you also get an iterator to iterate the packet array.
     //Becuase the content pointed by raw data maybe from outer data and its packet element may have different sizeof(test_type).
     //Using ()operator to get raw pointer
@@ -390,7 +415,7 @@ int main(){
     rawbuf_writer_iterator<test_type> itt = instance2->tt(instance(), 1
         );
     itt->a(-1);
-
+    
     //Now we will exam the "any" type field whether they are the same as "non-any" type
     //现在我们检查下ANY类型的成员是否和非ANY类型的使用完全相同
     rawbuf_writer_iterator<test_type1> itd = instance2->dd<test_type1::alloc>(2);
@@ -404,7 +429,7 @@ int main(){
     //这是兼容C++03的代价。
     itt()->v<test_type1>(); 
     itd->vv<test_type1::add_ref>(itt()->v<test_type1>()());
-
+    
     OUTPUT_TEST(instance2()->output(std::cout));
 #ifdef RAWBUF_ENABLE_TEMPLATE_PACKET
     //Now look at the template packet
@@ -620,5 +645,6 @@ int main(){
     //最后我们看看这一个包的真正大小
     cout << "size:" << instance2.size () << endl;
     //Till now it is 1964.
+
     return 0;
 }

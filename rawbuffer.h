@@ -51,6 +51,19 @@ inline M* rawbuf_get_array_pointer(typename T::array_count_type& the_array_count
 } 
 
 template<typename T, typename M>
+inline M rawbuf_get_varint(const T* that, typename T::offset_type filed_tag ){
+    if(that->_.real_optional_fields_count > filed_tag ){
+        const typename T::offset_type *foffset = that->_.field_offset + 1 + filed_tag; 
+        if(*foffset != 0){ 
+            M result;
+            rawbuf::rawbuf_varint<M>::decode(result, ((const char*)foffset) + *foffset);
+            return result;
+        }
+    }
+    return 0;
+} 
+
+template<typename T, typename M>
 inline M* rawbuf_get_array_pointer(const T* that, typename T::offset_type filed_tag) {
     if (that->_.real_optional_fields_count > filed_tag) {
         const typename T::offset_type *foffset = that->_.field_offset + 1 + filed_tag;
@@ -61,18 +74,6 @@ inline M* rawbuf_get_array_pointer(const T* that, typename T::offset_type filed_
                 --max_count;
             }
             return (M*)RAW_BUF_ALIGN_TYPE((size_t)buf, rawbuf::rawbuf_alignment<ARGS_LIST(M)>::result, size_t);
-        }
-    }
-    return 0;
-}
-
-
-template<typename T>
-inline typename T::array_count_type* rawbuf_get_array_count_pointer(const T* that, typename T::offset_type filed_tag) {
-    if (that->_.real_optional_fields_count > filed_tag) {
-        const typename T::offset_type *foffset = that->_.field_offset + 1 + filed_tag;
-        if (*foffset != 0) {
-            return (typename T::array_count_type*)((char*)foffset + *foffset);
         }
     }
     return 0;
