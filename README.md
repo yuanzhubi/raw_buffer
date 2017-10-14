@@ -8,7 +8,7 @@ Charactors:
 
 1. Unpack not needed, IDL not needed, API generating tool not needed
 
-2. Safe against malicious input, including buffer overflow upward or downward, data is not aligned. You can do the safe check for any sub-tree starting from any node of the tree. When visit c string, use a "c_str" command to guarantee '\0' ending
+2. Safe against malicious input, including buffer overflow upward or downward, data is not aligned. You can do the safe check for any sub-tree starting from any node of the tree. When visit an array as c-string, use a "c_str" command to guarantee '\0' ending.
 
 3. POD struct, POD union are suppoted in packet definition.
 
@@ -45,7 +45,7 @@ raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化
 
 0. 包被看成树形的结构存储在原始的缓冲区中.
 1. 访问包无需解包，协议定义无需IDL，API生成工具也就不需要了.
-2. 可以安全的对抗各种恶意制造的输入，包括缓冲区上溢或者下溢，数据未对齐。可以在树的任何一个节点上开始对子树进行检查。访问c字符串时，注意使用一个c_str命令来保证'\0'结尾.
+2. 可以安全的对抗各种恶意制造的输入，包括缓冲区上溢或者下溢，数据未对齐。可以在树的任何一个节点上开始对子树进行检查。当把数组当成c字符串来访问时，注意使用一个c_str命令来保证'\0'结尾.
 3. 你可以在包定义中使用POD结构体，POD联合.
 4. 一个节点可以被一个或者多个比他创建的早（这个限制是为了避免环）的节点所引用来节省内存空间.
 5. 你可以使用前向声明的未完整类型甚至包类型自己作为包数据成员类型。这加强了功能4（允许链表，树等数据结构类型在包中实做）！
