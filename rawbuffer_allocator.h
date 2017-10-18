@@ -36,7 +36,7 @@ struct rawbuf_writer_proto : public rawbuf_proto {
 public:
     template <typename RAWBUF_T, typename RAWBUF_M >
     RAWBUF_T* append(const RAWBUF_T* src, RAWBUF_M* offset_pointer){
-        const static size_t align_count = rawbuf::rawbuf_alignment<RAWBUF_T>::result;
+        static const size_t align_count = rawbuf::rawbuf_alignment<RAWBUF_T>::result;
         const size_t new_offset = RAW_BUF_ALIGN(this->data_size, align_count);
         const size_t realsize = 1*sizeof(RAWBUF_T);
         const size_t offset_diff = new_offset - (rawbuf_uint32)((char*)offset_pointer - this->data_ptr);
@@ -84,7 +84,7 @@ public:
 
     template <typename RAWBUF_T, typename RAWBUF_M, typename RAWBUF_A > /*count|values*/
     RAWBUF_T* append(const RAWBUF_T* src, RAWBUF_A count, RAWBUF_M* offset_pointer) {
-        const static size_t align_count = rawbuf::rawbuf_alignment<RAWBUF_T>::result;
+        static const size_t align_count = rawbuf::rawbuf_alignment<RAWBUF_T>::result;
 
         const size_t new_offset_count = this->data_size;
         const size_t new_offset = RAW_BUF_ALIGN(new_offset_count + sizeof(RAWBUF_A) + 1, align_count);
@@ -116,15 +116,15 @@ public:
 
     template <typename RAWBUF_T>
     static void init_rawbuf_struct(RAWBUF_T* p){
-        p->_.real_optional_fields_count = RAWBUF_T::optional_fields_count;
-        for(size_t i = 1; i <= RAWBUF_T::optional_fields_count; ++i){
+        p->set_optional_fields_count(RAWBUF_T::optional_fields_count);
+        for(size_t i = RAWBUF_T::field_index_begin; i < RAWBUF_T::optional_fields_count + RAWBUF_T::field_index_begin; ++i){
             p->_.field_offset[i] = 0;
         }
     }
 
     template <typename RAWBUF_T, typename RAWBUF_M >
     RAWBUF_T* alloc(RAWBUF_M* offset_pointer, bool set_offset = true){
-        const static size_t align_count = rawbuf::rawbuf_alignment<RAWBUF_T>::result;
+        static const size_t align_count = rawbuf::rawbuf_alignment<RAWBUF_T>::result;
 
         const size_t new_offset = RAW_BUF_ALIGN(this->data_size, align_count);
         const size_t realsize = 1*sizeof(RAWBUF_T);
@@ -165,7 +165,7 @@ struct rawbuf_writer{
     rawbuf_writer_proto* writer;
     size_t offset;
 
-    typedef typename RAWBUF_T::template rawbuf_writer_helper<RAWBUF_T, RAWBUF_T::fields_count+1> helper_type;
+    typedef typename RAWBUF_T::template rawbuf_writer_helper<RAWBUF_T, RAWBUF_T::fields_count + 1> helper_type;
     helper_type* operator->() const {
         return (helper_type*)this;
     }
@@ -330,11 +330,11 @@ protected:
             this->invalidate(RAW_BUF_ERROR_MSG("Pointer alignment check failed!"));
             return false;
         }
-        if(this->_.data_end < (char*)(that->_.field_offset + 1)){
+        if(this->_.data_end < (char*)(that->_.field_offset + RAWBUF_T::field_index_begin)){
             this->invalidate(RAW_BUF_ERROR_MSG("Required fields out of bound!"));
             return false;
         }
-        char* field_end = (char*)(that->_.field_offset + 1 + that->_.real_optional_fields_count);
+        char* field_end = (char*)(that->_.field_offset + RAWBUF_T::field_index_begin + that->get_optional_fields_count());
         if(this->data_ptr >= field_end || this->_.data_end < field_end){
             this->invalidate(RAW_BUF_ERROR_MSG("Optional fields out of bound!"));
             return false;
@@ -348,7 +348,7 @@ struct rawbuf_reader_iterator : public rawbuf_reader<RAWBUF_T>{
     typedef rawbuf_reader_iterator this_type;
     size_t element_size;
     bool optional_count_check(this_type& rhs){
-        if(this->get()->_.real_optional_fields_count != rhs.get()->_.real_optional_fields_count){
+        if(this->get()->get_optional_fields_count() != rhs.get()->get_optional_fields_count()){
             this->invalidate(RAW_BUF_ERROR_MSG("Invalid optional fields count!"));
             rhs.invalidate(RAW_BUF_ERROR_MSG("Invalid optional fields count!"));
             return false;
@@ -357,7 +357,7 @@ struct rawbuf_reader_iterator : public rawbuf_reader<RAWBUF_T>{
     }
 
     bool optional_count_check(size_t optional_count){
-        if(this->get()->_.real_optional_fields_count != optional_count){
+        if(this->get()->get_optional_fields_count() != optional_count){
             this->invalidate(RAW_BUF_ERROR_MSG("Invalid optional fields count!"));
             return false;
         }
@@ -367,11 +367,11 @@ struct rawbuf_reader_iterator : public rawbuf_reader<RAWBUF_T>{
     //inline this_type  operator+  (size_t diff) const {this_type result = *this; result.data_ptr += diff * element_size; result.init_check() && result.optional_count_check(*this); return result;}
     //inline this_type  operator-  (size_t diff) const {this_type result = *this; result.data_ptr -= diff * element_size; result.init_check() && result.optional_count_check(*this); return result;}
 
-    inline this_type& operator-- ()            {size_t optional_count = this->get()->_.real_optional_fields_count; this->data_ptr -= 1    * element_size; this->init_check() && this->optional_count_check(optional_count); return *this;}
-    inline this_type& operator-= (size_t diff) {size_t optional_count = this->get()->_.real_optional_fields_count; this->data_ptr -= diff * element_size; this->init_check() && this->optional_count_check(optional_count); return *this;}
+    inline this_type& operator-- ()            {size_t optional_count = this->get()->get_optional_fields_count(); this->data_ptr -= 1    * element_size; this->init_check() && this->optional_count_check(optional_count); return *this;}
+    inline this_type& operator-= (size_t diff) {size_t optional_count = this->get()->get_optional_fields_count(); this->data_ptr -= diff * element_size; this->init_check() && this->optional_count_check(optional_count); return *this;}
 
-    inline this_type& operator++ ()            {size_t optional_count = this->get()->_.real_optional_fields_count; this->data_ptr += 1    * element_size; this->init_check() && this->optional_count_check(optional_count); return *this;}
-    inline this_type& operator+= (size_t diff) {size_t optional_count = this->get()->_.real_optional_fields_count; this->data_ptr += diff * element_size; this->init_check() && this->optional_count_check(optional_count); return *this;}
+    inline this_type& operator++ ()            {size_t optional_count = this->get()->get_optional_fields_count(); this->data_ptr += 1    * element_size; this->init_check() && this->optional_count_check(optional_count); return *this;}
+    inline this_type& operator+= (size_t diff) {size_t optional_count = this->get()->get_optional_fields_count(); this->data_ptr += diff * element_size; this->init_check() && this->optional_count_check(optional_count); return *this;}
 
     inline this_type operator-- (int)          {this_type result = *this; --(*this); return result;}
     inline this_type operator++ (int)          {this_type result = *this; ++(*this); return result;}
@@ -398,7 +398,7 @@ const char* rawbuf_has_error(void* buffer, size_t length){
 
 template <typename RAWBUF_T>
 size_t rawbuf_get_packet_size(const RAWBUF_T* packet){
-    size_t real_optional_fields_count = packet->_.real_optional_fields_count;
+    size_t real_optional_fields_count = packet->get_optional_fields_count();
     const size_t estimate_size = sizeof(RAWBUF_T) - RAWBUF_T::optional_fields_count * sizeof(typename RAWBUF_T::offset_type) + real_optional_fields_count * sizeof(typename RAWBUF_T::offset_type);
     const size_t result = RAW_BUF_ALIGN(estimate_size, rawbuf::rawbuf_alignment<RAWBUF_T>::result);
     return result;

@@ -106,12 +106,12 @@ namespace rawbuf{
 
     template <typename lhs, typename rhs>
     struct rawbuf_type_equal{
-        const static bool result = false;
+        static const bool result = false;
     };
 
     template <typename lhs>
     struct rawbuf_type_equal<lhs, lhs>{
-        const static bool result = true;
+        static const bool result = true;
     };
 
     template <unsigned int N>

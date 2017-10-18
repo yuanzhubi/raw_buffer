@@ -152,7 +152,10 @@ DEF_PACKET_BEGIN(test_type1)
     //Or update the size estimation of the optional array of cc, zz, uu.
     //协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。或者修改对可选数组如cc,zz,uu,tt, dd的长度估计。
 
-DEF_PACKET_END
+//DEF_PACKET_END
+DEF_PACKET_END_FINAL
+//If you are sure that test_type1 have not and will not add or delete any field, you can use DEF_PACKET_END_FINAL instead of DEF_PACKET_END to save sizeof(offset_type) bytes.
+//如果你确认test_type1 过去和将来 都不会增加或者删除过字段，那么可以使用DEF_PACKET_END_FINAL代替DEF_PACKET_END来节省sizeof(offset_type) 个字节。
 
 #ifdef RAWBUF_ENABLE_TEMPLATE_PACKET
 //template packet definition
@@ -284,10 +287,10 @@ int main(){
     
     //Let us start with a usual mistake.
     //std::vecotr<int> x; x.push_back(4);x.push_back(4);x.push_back(4);x.push_back(4);
-    //x.push_back(*x.begin());  WARNING! ERROR CODES!
+    //x.push_back(*x.begin());  WARNING! DANGEROUS CODES!
 
-    //Error codes: because push_back may lead to reallocation and make the argument of push_back invalid.
-    //错误的代码: 因为push_back可能导致reallocation然后让push_back的参数是个无效的引用
+    //Dangerous codes: because push_back may lead to reallocation and make the argument of push_back invalid.
+    //危险的代码: 因为push_back可能导致reallocation然后让push_back的参数是个无效的引用
 
     //So do not copy the field to another one in the same root builder until you guarantee it will not reallocate during the copy!
     //所以除非你能保证拷贝时不会发生缓冲区重新分配, 否则不要把已有的数据成员拷贝到同一个根builder的其它数据成员上。

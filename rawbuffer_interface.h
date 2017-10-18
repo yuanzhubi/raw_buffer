@@ -49,15 +49,17 @@ public:\
 #define DEF_PACKET_END \
 public: \
     static const rawbuf_uint32 fields_count = RAW_BUF_INDEXER(member_counter); \
-    static const rawbuf_uint32 optional_fields_count = RAW_BUF_INDEXER(optional_counter); \
+    static const offset_type optional_fields_count = RAW_BUF_INDEXER(optional_counter); \
     static const rawbuf_uint32 required_fields_count = RAW_BUF_INDEXER(required_counter); \
     typedef members_iterator<int, fields_count - 1> prev_type; \
     static const rawbuf_uint32 fields_alignment =  rawbuf::rawbuf_alignment<offset_type>::result; \
     static const rawbuf_uint32 alignment = (fields_alignment  > prev_type::required_alignment) ? fields_alignment : prev_type::required_alignment; \
     union{ \
         offset_type real_optional_fields_count; \
-        offset_type field_offset[1 + optional_fields_count]; \
+        offset_type field_offset[rawbuf_struct_type::field_index_begin + optional_fields_count]; \
     }_;\
+    inline offset_type get_optional_fields_count() const { return (rawbuf_struct_type::field_index_begin == 0) ? optional_fields_count : this->_.real_optional_fields_count;} \
+    inline void set_optional_fields_count(offset_type new_optional_fields_count) {  if(rawbuf_struct_type::field_index_begin == 1) this->_.real_optional_fields_count = new_optional_fields_count;} \
     static const rawbuf_uint32 sizer = prev_type::sizer; \
     static const rawbuf_uint32 aligned_1x = prev_type::aligned_1x + (alignment == 1 ? 0:1); \
     static const rawbuf_uint32 aligned_2x = prev_type::aligned_2x + (alignment == 2 ? 0:1); \
@@ -102,6 +104,11 @@ public: \
     } \
 };
 
+#define DEF_PACKET_END_FINAL \
+public: \
+     static const size_t field_index_begin = 1; \
+DEF_PACKET_END
+
 #define ADD_FIELD(rawbuf_input_type, rawbuf_name) \
 public:\
     ADD_IMPL_INIT(ARGS_LIST(rawbuf_input_type), rawbuf_name, 1) \
@@ -112,21 +119,21 @@ public:\
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
             func_instance(this_instance.rawbuf_name()); \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate(this_instance, func_instance); \
             }\
         } \
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate_with_name(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
             func_instance(this_instance.rawbuf_name(), #rawbuf_name); \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate_with_name(this_instance, func_instance); \
             }\
         } \
         template<typename RAWBUF_This, typename RAWBUF_Func> \
         static void iterate_with_depth(RAWBUF_This& this_instance, RAWBUF_Func& func_instance, int rawbuf_depth){ \
             func_instance(this_instance.rawbuf_name(), #rawbuf_name, rawbuf_depth); \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate_with_depth(this_instance, func_instance, rawbuf_depth); \
             }\
         } \
@@ -138,14 +145,14 @@ public:\
                 rawbuf_packet->rawbuf_name(*ptr); \
             } else{ \
                 RAWBUF_T* that = rawbuf_packet(); \
-                that->_.field_offset[1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)] = 0; \
+                that->_.field_offset[RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin] = 0; \
             } \
             next_type::copy(rawbuf_src, rawbuf_packet); \
         } \
     }; \
     rawbuf_input_type* rawbuf_name() const { \
-        if(this->_.real_optional_fields_count > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){ \
-            const offset_type *rawbuf_foffset = this->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+        if(this->get_optional_fields_count() > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){ \
+            const offset_type *rawbuf_foffset = this->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + rawbuf_struct_type::field_index_begin; \
             if(*rawbuf_foffset != 0 ){ \
                 return (rawbuf_input_type*)((char*)rawbuf_foffset + *rawbuf_foffset ); \
             }\
@@ -157,7 +164,7 @@ public:\
         template<typename RAWBUF_M> \
         bool rawbuf_name(const rawbuf_input_type* rawbuf_src) { \
             RAWBUF_T* that = (*this)(); \
-            offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            offset_type *rawbuf_foffset = that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + rawbuf_struct_type::field_index_begin; \
             const char* dp = (const char*)(rawbuf_src);\
             if(dp < (char*)rawbuf_foffset || dp > this->writer->end()) { \
                 return false; \
@@ -173,7 +180,7 @@ public:\
         rawbuf_input_type* rawbuf_name(const RAWBUF_M& the_src) { \
             const rawbuf_input_type& rawbuf_src = the_src; \
             RAWBUF_T* that = (*this)(); \
-            typename RAWBUF_T::offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            typename RAWBUF_T::offset_type *rawbuf_foffset = that->_.field_offset + RAWBUF_T::field_index_begin + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
             if(*rawbuf_foffset != 0){ \
                 rawbuf_input_type* rawbuf_data = (rawbuf_input_type*)(((char*)rawbuf_foffset) + *rawbuf_foffset ); \
                 *rawbuf_data = rawbuf_src; \
@@ -187,8 +194,8 @@ public:\
         rawbuf_input_type* rawbuf_name() { \
             RAWBUF_T* that = (*this)(); \
             typedef typename RAWBUF_T::offset_type offset_type; \
-            if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){return 0;}            /*   The field was not known by the creator.*/\
-            offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            if(that->get_optional_fields_count() <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){return 0;}            /*   The field was not known by the creator.*/\
+            offset_type *rawbuf_foffset = that->_.field_offset + RAWBUF_T::field_index_begin + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
             if(*rawbuf_foffset == 0) return 0;                                                                      /*   The field was not assigned.*/\
             rawbuf_input_type* rawbuf_data = (rawbuf_input_type*)((char*)rawbuf_foffset + *rawbuf_foffset ); \
             if(this->begin() >= (char*)(rawbuf_data) || this->end() < (char*)(rawbuf_data + 1)){                    /* 1.The offset should not be out of bound.*/\
@@ -306,8 +313,8 @@ public:\
         template<typename RAWBUF_M> \
         static void copy(const RAWBUF_M& the_src, const rawbuf_writer<RAWBUF_T>& rawbuf_packet){ \
             const RAWBUF_T& rawbuf_src = the_src; \
-            if(rawbuf_src._.field_offset[1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)] == 0){ \
-                rawbuf_packet()->_.field_offset[1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)] = 0; \
+            if(rawbuf_src._.field_offset[RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin] == 0){ \
+                rawbuf_packet()->_.field_offset[RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin] = 0; \
             } \
             else{ \
                 rawbuf_packet->rawbuf_name(rawbuf_src.rawbuf_name()); \
@@ -326,10 +333,10 @@ public:\
             const rawbuf_input_type& rawbuf_src = the_src; \
             RAWBUF_T* that = (*this)(); \
             if(rawbuf_src == high_freq_number_as_default){ \
-                that->_.field_offset[1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)] = 0; \
+                that->_.field_offset[RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin] = 0; \
                 return true; \
             } \
-            return (this->writer->append_varint(rawbuf_src - high_freq_number_as_default, that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)) == 0); \
+            return (this->writer->append_varint(rawbuf_src - high_freq_number_as_default, that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin) == 0); \
         } \
     };\
     template<typename RAWBUF_T> \
@@ -367,7 +374,7 @@ public:\
             }else{ \
                 func_instance((rawbuf_input_type*)0, 0); \
             } \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate(this_instance, func_instance); \
             }\
         } \
@@ -382,7 +389,7 @@ public:\
             }else{ \
                 func_instance((rawbuf_input_type*)0, 0, #rawbuf_name); \
             } \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate_with_name(this_instance, func_instance); \
             }\
         } \
@@ -397,7 +404,7 @@ public:\
             }else{ \
                 func_instance((rawbuf_input_type*)0, 0, #rawbuf_name, rawbuf_depth); \
             } \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate_with_depth(this_instance, func_instance, rawbuf_depth); \
             }\
         } \
@@ -409,7 +416,7 @@ public:\
                  rawbuf_packet->rawbuf_name(rawbuf_data, rawbuf_size); \
             } else{ \
                 RAWBUF_T* that = rawbuf_packet(); \
-                that->_.field_offset[1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)] = 0; \
+                that->_.field_offset[RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin] = 0; \
             } \
             next_type::copy(the_src, rawbuf_packet); \
         } \
@@ -425,13 +432,7 @@ public:\
     template<typename RAWBUF_M> /*RAWBUF_M can only be c_str*/ \
     rawbuf_input_type* rawbuf_name() const{ \
         array_count_type rawbuf_size; \
-        rawbuf_input_type* rawbuf_data = this->rawbuf_name(rawbuf_size); \
-        if(rawbuf_size != 0){ \
-            if(sizeof(rawbuf_input_type) != 1 || ((char*)(rawbuf_data + rawbuf_size))[-1] == '\0'){ \
-                return rawbuf_data; \
-            } \
-        }\
-        return 0; \
+        return this->template rawbuf_name<RAWBUF_M>(rawbuf_size); \
     } \
     template<typename RAWBUF_M> /*RAWBUF_M can only be c_str*/ \
     rawbuf_input_type* rawbuf_name(array_count_type& rawbuf_size) const{ \
@@ -457,7 +458,7 @@ public:\
         rawbuf_input_type* rawbuf_name(const RAWBUF_M* the_src, array_count_type the_array_size) { \
             const rawbuf_input_type* rawbuf_src = the_src; \
             RAWBUF_T* that = (*this)(); \
-            offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            offset_type *rawbuf_foffset = that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin; \
             return this->writer->append(rawbuf_src, the_array_size, rawbuf_foffset); \
         } \
         template <typename RAWBUF_M, array_count_type the_array_size> \
@@ -467,7 +468,7 @@ public:\
         template <rawbuf_cmd::alloc_cmd RAWBUF_cmd> \
         rawbuf_input_type* rawbuf_name(array_count_type the_array_size) { \
             RAWBUF_T* that = (*this)(); \
-            offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            offset_type *rawbuf_foffset = that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin; \
             rawbuf_input_type* rawbuf_data = this->writer->append(0, the_array_size, rawbuf_foffset); \
             if(sizeof(rawbuf_input_type) == 1) { \
                 *((char*)rawbuf_data) = 0; \
@@ -480,77 +481,41 @@ public:\
         typedef typename RAWBUF_T::offset_type offset_type;\
         typedef typename RAWBUF_T::array_count_type array_count_type; \
         rawbuf_input_type* rawbuf_name() { \
-            RAWBUF_T* that = (*this)(); \
             array_count_type rawbuf_size; \
-            rawbuf_input_type* rawbuf_data = rawbuf_get_array_pointer<RAWBUF_T, rawbuf_input_type>(rawbuf_size, that, \
-                (typename RAWBUF_T::offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
-            if(rawbuf_size == 0) { \
-                if(rawbuf_data != 0){ \
-                     this->invalidate(RAW_BUF_ERROR_MSG("Zero length array!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
-                } \
-                return 0; \
-            } \
-            rawbuf_input_type* array_end = rawbuf_data + rawbuf_size; \
-            if(this->end() < ((char*)(array_end)) || array_end <= rawbuf_data){ \
-                this->invalidate(RAW_BUF_ERROR_MSG("Optional array out of bound!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
-                return 0; \
-            } \
-            return rawbuf_data; \
+            return this->rawbuf_name(rawbuf_size); \
         } \
         rawbuf_input_type* rawbuf_name(array_count_type& rawbuf_size) { \
             RAWBUF_T* that = (*this)(); \
+            bool test_result; \
+            const char* rawbuf_end = this->end(); \
             rawbuf_input_type* rawbuf_data = rawbuf_get_array_pointer<RAWBUF_T, rawbuf_input_type>(rawbuf_size, that, \
-                (typename RAWBUF_T::offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
-            if(rawbuf_size == 0) { \
-                if(rawbuf_data != 0){ \
-                     this->invalidate(RAW_BUF_ERROR_MSG("Zero length array!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
-                } \
-                return 0; \
-            } \
-            rawbuf_input_type* array_end = rawbuf_data + rawbuf_size; \
-            if(this->end() < ((char*)(array_end)) || array_end <= rawbuf_data){ \
+                (typename RAWBUF_T::offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name), rawbuf_end, test_result); \
+            if(!test_result){ \
                 this->invalidate(RAW_BUF_ERROR_MSG("Optional array out of bound!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
                 return 0; \
-            } \
+            }\
             return rawbuf_data; \
         } \
         template<typename RAWBUF_M> /*RAWBUF_M can only be c_str*/ \
         rawbuf_input_type* rawbuf_name(){ \
-            RAWBUF_T* that = (*this)(); \
             array_count_type rawbuf_size; \
-            rawbuf_input_type* rawbuf_data = rawbuf_get_array_pointer<RAWBUF_T, rawbuf_input_type>(rawbuf_size, that, \
-                (typename RAWBUF_T::offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
-            if(rawbuf_data == 0) {return rawbuf_data;} \
-            rawbuf_input_type* array_end = rawbuf_data + rawbuf_size; \
-            if(this->end() < ((char*)(array_end)) || array_end <= rawbuf_data){ \
-                this->invalidate(RAW_BUF_ERROR_MSG("Optional array out of bound!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
-                return 0; \
-            } \
-            if(sizeof(rawbuf_input_type) != 1 || ((char*)(rawbuf_data + rawbuf_size))[-1] == '\0'){ \
-                return rawbuf_data; \
-            } \
-            return 0; \
+            return this->template rawbuf_name<RAWBUF_M>(rawbuf_size); \
         } \
         template<typename RAWBUF_M> /*RAWBUF_M can only be c_str*/ \
         rawbuf_input_type* rawbuf_name(array_count_type& rawbuf_size){ \
-            RAWBUF_T* that = (*this)(); \
-            rawbuf_input_type* rawbuf_data = rawbuf_get_array_pointer<RAWBUF_T, rawbuf_input_type>(rawbuf_size, that, \
-                (typename RAWBUF_T::offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
-            if(rawbuf_data == 0) {return rawbuf_data;} \
-            rawbuf_input_type* array_end = rawbuf_data + rawbuf_size; \
-            if(this->end() < ((char*)(array_end)) || array_end <= rawbuf_data){ \
-                this->invalidate(RAW_BUF_ERROR_MSG("Optional array out of bound!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
-                return 0; \
-            } \
+            rawbuf_input_type* rawbuf_data = this->rawbuf_name(rawbuf_size); \
+            if(rawbuf_data == 0) return 0; \
             if(sizeof(rawbuf_input_type) != 1 || ((char*)(rawbuf_data + rawbuf_size))[-1] == '\0'){ \
+                --rawbuf_size; \
                 return rawbuf_data; \
             } \
             return 0; \
         } \
         template <rawbuf_cmd::visit_array_cmd RAWBUF_cmd> \
         array_count_type rawbuf_name() { \
-            RAWBUF_T* that = (*this)(); \
-            return that->template rawbuf_name<RAWBUF_cmd>(); \
+            array_count_type rawbuf_size; \
+            this->template rawbuf_name<RAWBUF_cmd>(rawbuf_size); \
+            return rawbuf_size; \
         } \
         template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
         const char* check(){ \
@@ -666,7 +631,7 @@ public:\
             if(func_instance(rawbuf_data) && rawbuf_data != 0 ){ \
                 rawbuf_data->iterate(func_instance); \
             }\
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate(this_instance, func_instance); \
             }\
         } \
@@ -678,7 +643,7 @@ public:\
             if(func_instance(rawbuf_data, #rawbuf_name) && rawbuf_data != 0 ){ \
                 rawbuf_data->iterate_with_name(func_instance); \
             }\
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate_with_name(this_instance, func_instance); \
             }\
         } \
@@ -690,7 +655,7 @@ public:\
             if(func_instance(rawbuf_data, #rawbuf_name, rawbuf_depth) && rawbuf_data != 0){ \
                 rawbuf_data->iterate_with_depth(func_instance, rawbuf_depth + 1); \
             }\
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate_with_depth(this_instance, func_instance, rawbuf_depth); \
             }\
         } \
@@ -704,14 +669,14 @@ public:\
                 rawbuf_packet->rawbuf_name(*ptr); \
             } else{ \
                 RAWBUF_T* that = rawbuf_packet(); \
-                that->_.field_offset[ 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)] = 0; \
+                that->_.field_offset[RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin] = 0; \
             } \
             next_type::copy(rawbuf_src, rawbuf_packet); \
         } \
     }; \
     rawbuf_input_type* rawbuf_name() const { \
-        if(this->_.real_optional_fields_count > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){ \
-            const offset_type *rawbuf_foffset = this->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+        if(this->get_optional_fields_count() > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){ \
+            const offset_type *rawbuf_foffset = this->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + rawbuf_struct_type::field_index_begin; \
             if(*rawbuf_foffset != 0 ){ \
                 return (rawbuf_input_type*)((char*)rawbuf_foffset + *rawbuf_foffset); \
             }\
@@ -722,10 +687,10 @@ public:\
     struct rawbuf_writer_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)> : public rawbuf_writer_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) - 1 >{\
         typedef typename RAWBUF_T::offset_type offset_type; \
         typedef typename RAWBUF_T::template type_indexer<int,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
-        template<typename RAWBUF_M> \
+        template<typename RAWBUF_M> /*add_ref*/\
         bool rawbuf_name(const local_type* rawbuf_src) { \
             RAWBUF_T* that = (*this)(); \
-            offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            offset_type *rawbuf_foffset = that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin; \
             const char* dp = (const char*)(rawbuf_src);\
             if(dp < (char*)rawbuf_foffset || dp > this->writer->end()) { \
                 return false; \
@@ -738,10 +703,10 @@ public:\
             return true; \
         } \
         template<typename RAWBUF_M> \
-        rawbuf_writer<RAWBUF_M> rawbuf_name(const RAWBUF_M& the_src) { \
+        rawbuf_writer<local_type> rawbuf_name(const RAWBUF_M& the_src) { \
             RAWBUF_T* that = (*this)(); \
-            offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
-            rawbuf_writer<RAWBUF_M> rawbuf_data; \
+            offset_type *rawbuf_foffset = that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin; \
+            rawbuf_writer<local_type> rawbuf_data; \
             rawbuf_data.writer = this->writer; \
             char* dp; \
             if(*rawbuf_foffset == 0){ \
@@ -753,7 +718,7 @@ public:\
             } \
             else{ \
                 dp = ((char*)rawbuf_foffset) + *rawbuf_foffset; /*re-assignment case*/\
-                if(((local_type*)dp)->_.real_optional_fields_count < RAWBUF_M::optional_fields_count){ /*Assgined from older version? */\
+                if(((local_type*)dp)->get_optional_fields_count() < RAWBUF_T::optional_fields_count){ /*Assgined from older version? */\
                     dp = (char*)(this->writer->template alloc<RAWBUF_M, offset_type>(rawbuf_foffset));\
                     if(sizeof(offset_type) <= 2 && dp == 0){ \
                         rawbuf_data.writer = 0; \
@@ -761,7 +726,7 @@ public:\
                     } \
                 }\
                 else{ \
-                    ((local_type*)dp)->_.real_optional_fields_count = RAWBUF_T::optional_fields_count; /*Unknown field will be discarded. */\
+                    ((local_type*)dp)->set_optional_fields_count(RAWBUF_T::optional_fields_count); /*Unknown field will be discarded. */\
                 } \
             } \
             rawbuf_data.offset = dp - this->writer->data_ptr; \
@@ -772,7 +737,7 @@ public:\
         template <rawbuf_cmd::alloc_cmd RAWBUF_cmd> \
         rawbuf_writer<local_type> rawbuf_name() { \
             RAWBUF_T* that = (*this)(); \
-            offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            offset_type *rawbuf_foffset = that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin ; \
             rawbuf_writer<typename RAWBUF_T::template type_indexer<int,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type> rawbuf_data; \
             rawbuf_data.writer = this->writer; \
             char* dp; \
@@ -797,8 +762,8 @@ public:\
             rawbuf_reader<local_type> real_result;  \
             RAWBUF_T* that = (*this)(); \
             typedef typename RAWBUF_T::offset_type offset_type; \
-            if(that->_.real_optional_fields_count <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){real_result.reset();  return real_result;} /*   The field was not known by the creator.*/\
-            offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            if(that->get_optional_fields_count() <= (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){real_result.reset();  return real_result;} /*   The field was not known by the creator.*/\
+            offset_type *rawbuf_foffset = that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin; \
             if(*rawbuf_foffset == 0) {real_result.reset();  return real_result;}                                                                    /*   The field was not assigned.*/\
             local_type* rawbuf_data = (rawbuf_input_type*)((char*)rawbuf_foffset + *rawbuf_foffset ); \
             if(this->begin() >= (char*)(rawbuf_data) || this->end() < (char*)(rawbuf_data + 1)){                                                         /* 1.The offset should not be out of bound.*/\
@@ -923,7 +888,7 @@ public:\
             }else{ \
                 func_instance((local_type*)0, 0); \
             } \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate(this_instance, func_instance); \
             }\
         } \
@@ -946,7 +911,7 @@ public:\
             }else{ \
                 func_instance((local_type*)0, 0, #rawbuf_name); \
             } \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate_with_name(this_instance, func_instance, #rawbuf_name); \
             }\
         } \
@@ -968,7 +933,7 @@ public:\
             }else{ \
                 func_instance((local_type*)0, 0, #rawbuf_name, rawbuf_depth); \
             } \
-            if(next_type::is_required || this_instance._.real_optional_fields_count > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
+            if(next_type::is_required || this_instance.get_optional_fields_count() > RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + 1){ \
                 next_type::iterate_with_depth(this_instance, func_instance, rawbuf_depth); \
             }\
         } \
@@ -981,7 +946,7 @@ public:\
                  rawbuf_packet->rawbuf_name(rawbuf_data, rawbuf_size); \
             } else{ \
                 RAWBUF_T* that = rawbuf_packet(); \
-                that->_.field_offset[1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)] = 0; \
+                that->_.field_offset[RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin] = 0; \
             } \
             next_type::copy(the_src, rawbuf_packet); \
         } \
@@ -1028,7 +993,7 @@ public:\
                 return result; \
             } \
             RAWBUF_T* that = (*this)(); \
-            typename RAWBUF_T::offset_type *rawbuf_foffset = that->_.field_offset + 1 + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name); \
+            typename RAWBUF_T::offset_type *rawbuf_foffset = that->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + RAWBUF_T::field_index_begin; \
             result.writer = this->writer; \
             char* dp; \
             dp = (char*)(this->writer->template alloc<local_type, offset_type, array_count_type>(the_array_size, rawbuf_foffset)); \
@@ -1041,24 +1006,24 @@ public:\
         typedef typename RAWBUF_T::template type_indexer<int,RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)>::type local_type; \
         typedef typename RAWBUF_T::offset_type offset_type;\
         rawbuf_reader_iterator<local_type> rawbuf_name(typename RAWBUF_T::array_count_type &rawbuf_size) { \
-            local_type* rawbuf_data = rawbuf_get_array_pointer<RAWBUF_T, local_type>(rawbuf_size, (*this)(), \
-                (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)); \
+            RAWBUF_T* that = (*this)(); \
+            bool test_result; \
+            const char* rawbuf_end = this->end(); \
             rawbuf_reader_iterator<local_type> real_result; \
-            if(rawbuf_size == 0){ \
-                real_result.reset(); \
-                if(rawbuf_data != 0){ \
-                     this->invalidate(RAW_BUF_ERROR_MSG("Zero length array!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
-                } \
-                return real_result; \
-            } \
-            if((this->end()) <= (char*)rawbuf_data || (char*)rawbuf_data <= this->begin()){ \
-                this->invalidate(RAW_BUF_ERROR_MSG("Optional array begin out of bound!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
+            rawbuf_input_type* rawbuf_data = rawbuf_get_array_pointer<RAWBUF_T, local_type>(rawbuf_size, that, \
+                (typename RAWBUF_T::offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name), rawbuf_end, test_result); \
+            if(!test_result){ \
+                this->invalidate(RAW_BUF_ERROR_MSG("Optional array out of bound!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
                 real_result.reset(); \
                 return real_result; \
-            } \
+            }\
+            if(rawbuf_data == 0){ \
+                real_result.reset();\
+                return real_result;\
+            }\
             size_t data_real_size = rawbuf_get_packet_size(rawbuf_data); \
             char* array_end = ((char*)rawbuf_data) + rawbuf_size*data_real_size; \
-            if(((char*)this->end()) < array_end || array_end <= (char*)rawbuf_data ){ \
+            if(rawbuf_end < array_end || array_end <= (char*)rawbuf_data ){ \
                 this->invalidate(RAW_BUF_ERROR_MSG("Optional array end out of bound!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
                 real_result.reset(); \
                 return real_result; \
@@ -1098,7 +1063,7 @@ public:\
                 this->invalidate(rawbuf_result);\
                 return rawbuf_result; \
             }\
-            size_t real_optional_fields_count = (*it)._.real_optional_fields_count; \
+            size_t real_optional_fields_count = (*it).get_optional_fields_count(); \
             for(array_count_type i = 1 ; i < rawbuf_size; ++i){ \
                 ++it;\
                 if(!it){ \
@@ -1106,7 +1071,7 @@ public:\
                     this->invalidate(tmp_result);\
                     return tmp_result;  \
                 } \
-                if( (real_optional_fields_count != (*it)._.real_optional_fields_count) ){ \
+                if( (real_optional_fields_count != (*it).get_optional_fields_count()) ){ \
                     this->invalidate(RAW_BUF_ERROR_MSG("Optional_fields_count is not same!" RAW_BUF_INFO(ARGS_LIST(rawbuf_input_type), rawbuf_name))); \
                     return this->error_msg();  \
                 } \
