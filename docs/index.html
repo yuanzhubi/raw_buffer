@@ -27,6 +27,9 @@ span {
 .sc6 {
 	color: #808080;
 }
+.sc7 {
+	color: #808080;
+}
 .sc9 {
 	color: #804000;
 }
@@ -46,6 +49,7 @@ span {
 #include &lt;utility&gt;
 #include &lt;fstream&gt;
 #include &lt;assert.h&gt;
+#include &lt;time.h&gt;
 </span><span class="sc0">
 </span><span class="sc9">#if defined(RAWBUF_TEST_MODE)
 #include "rawbuffer.h"
@@ -196,8 +200,11 @@ span {
 </span><span class="sc0">    </span><span class="sc2">//Or update the size estimation of the optional array of cc, zz, uu.
 </span><span class="sc0">    </span><span class="sc2">//协议公开之后，对协议安全的修改只允许在协议末尾增加或者删除字段。或者修改对可选数组如cc,zz,uu,tt, dd的长度估计。
 </span><span class="sc0">
-</span><span class="sc11">DEF_PACKET_END</span><span class="sc0">
-
+</span><span class="sc2">//DEF_PACKET_END
+</span><span class="sc11">DEF_PACKET_END_FINAL</span><span class="sc0">
+</span><span class="sc2">//If you are sure that test_type1 have not and will not add or delete any field, you can use DEF_PACKET_END_FINAL instead of DEF_PACKET_END to save sizeof(offset_type) bytes.
+//如果你确认test_type1 过去和将来 都不会增加或者删除过字段，那么可以使用DEF_PACKET_END_FINAL代替DEF_PACKET_END来节省sizeof(offset_type) 个字节。
+</span><span class="sc0">
 </span><span class="sc9">#ifdef RAWBUF_ENABLE_TEMPLATE_PACKET
 </span><span class="sc2">//template packet definition
 //使用模板的包类型定义
@@ -228,6 +235,35 @@ span {
 </span><span class="sc0">    </span><span class="sc11">ADD_FIELD</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">pair</span><span class="sc10">&lt;</span><span class="sc11">ARGS_LIST</span><span class="sc10">(</span><span class="sc16">int</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc16">double</span><span class="sc10">)&gt;,</span><span class="sc0"> </span><span class="sc11">d</span><span class="sc10">)</span><span class="sc0"> </span><span class="sc2">//ARGS_LIST should be used again.
 </span><span class="sc0">    </span><span class="sc11">ADD_FIELD_REQUIRED</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">pair</span><span class="sc10">&lt;</span><span class="sc11">ARGS_LIST</span><span class="sc10">(</span><span class="sc16">int</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc16">double</span><span class="sc10">)&gt;,</span><span class="sc0"> </span><span class="sc11">e</span><span class="sc10">)</span><span class="sc0">
     </span><span class="sc11">ADD_PACKET_ARRAY_ANY</span><span class="sc10">(</span><span class="sc11">test_type2</span><span class="sc10">&lt;</span><span class="sc16">int</span><span class="sc10">&gt;,</span><span class="sc0"> </span><span class="sc11">f</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">3</span><span class="sc10">)</span><span class="sc0">
+</span><span class="sc11">DEF_PACKET_END</span><span class="sc0">
+
+</span><span class="sc2">//We can use some container type;
+//我们也可以使用一些容器类型
+</span><span class="sc9">#include "rawbuffer_container.h"
+</span><span class="sc0">
+</span><span class="sc2">//Following is a real protocol in work
+</span><span class="sc16">template</span><span class="sc0"> </span><span class="sc10">&lt;</span><span class="sc16">typename</span><span class="sc0"> </span><span class="sc11">T</span><span class="sc10">&gt;</span><span class="sc0">
+</span><span class="sc11">DEF_PACKET_BEGIN</span><span class="sc10">(</span><span class="sc11">test_type3</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_FIELD_REQUIRED</span><span class="sc10">(</span><span class="sc16">char</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">packet_begin_tag</span><span class="sc10">)</span><span class="sc0"> </span><span class="sc2">//The packet will begin with '&lt;'
+</span><span class="sc0">    </span><span class="sc11">ADD_FIELD_REQUIRED</span><span class="sc10">(</span><span class="sc11">rawbuf_uint32</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">packet_size</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_PACKET</span><span class="sc10">(</span><span class="sc11">rawbuf_queue</span><span class="sc10">&lt;</span><span class="sc11">T</span><span class="sc10">&gt;,</span><span class="sc0"> </span><span class="sc11">packet_data</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_FIELD</span><span class="sc10">(</span><span class="sc16">char</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">packet_end_tag</span><span class="sc10">)</span><span class="sc0">            </span><span class="sc2">//The packet end with '&gt;'
+</span><span class="sc0">    </span><span class="sc11">test_type3</span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
+        </span><span class="sc5">this</span><span class="sc10">-&gt;</span><span class="sc11">packet_begin_tag</span><span class="sc10">(</span><span class="sc7">'&lt;'</span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc5">this</span><span class="sc10">-&gt;</span><span class="sc11">packet_size</span><span class="sc10">(</span><span class="sc4">0</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc10">}</span><span class="sc0">
+
+    </span><span class="sc16">void</span><span class="sc0"> </span><span class="sc11">encode</span><span class="sc10">(</span><span class="sc11">rawbuf_builder</span><span class="sc10">&lt;</span><span class="sc11">test_type3</span><span class="sc10">&gt;&amp;</span><span class="sc0"> </span><span class="sc11">builder</span><span class="sc10">)</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
+        </span><span class="sc11">builder</span><span class="sc10">-&gt;</span><span class="sc11">packet_end_tag</span><span class="sc10">(</span><span class="sc7">'&gt;'</span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc11">builder</span><span class="sc10">-&gt;</span><span class="sc11">packet_size</span><span class="sc10">(</span><span class="sc11">builder</span><span class="sc10">.</span><span class="sc11">size</span><span class="sc10">());</span><span class="sc0">
+    </span><span class="sc10">}</span><span class="sc0">
+</span><span class="sc11">DEF_PACKET_END</span><span class="sc0">
+
+</span><span class="sc11">DEF_PACKET_BEGIN</span><span class="sc10">(</span><span class="sc11">twitter_msg</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_FIELD_ARRAY</span><span class="sc10">(</span><span class="sc16">char</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">nick_name</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">32</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_FIELD_ARRAY</span><span class="sc10">(</span><span class="sc16">char</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">header_url</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">64</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_FIELD_ARRAY</span><span class="sc10">(</span><span class="sc16">char</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">twitter_content</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">255</span><span class="sc10">)</span><span class="sc0">
+    </span><span class="sc11">ADD_VAR_INT</span><span class="sc10">(</span><span class="sc11">rawbuf_uint64</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc11">publish_time</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">1508661161</span><span class="sc10">)</span><span class="sc0"> </span><span class="sc2">//Select the publish time as default time to compress 
 </span><span class="sc11">DEF_PACKET_END</span><span class="sc0">
 
 </span><span class="sc9">#endif 
@@ -328,10 +364,10 @@ span {
     
     </span><span class="sc2">//Let us start with a usual mistake.
 </span><span class="sc0">    </span><span class="sc2">//std::vecotr&lt;int&gt; x; x.push_back(4);x.push_back(4);x.push_back(4);x.push_back(4);
-</span><span class="sc0">    </span><span class="sc2">//x.push_back(*x.begin());  WARNING! ERROR CODES!
+</span><span class="sc0">    </span><span class="sc2">//x.push_back(*x.begin());  WARNING! DANGEROUS CODES!
 </span><span class="sc0">
-    </span><span class="sc2">//Error codes: because push_back may lead to reallocation and make the argument of push_back invalid.
-</span><span class="sc0">    </span><span class="sc2">//错误的代码: 因为push_back可能导致reallocation然后让push_back的参数是个无效的引用
+    </span><span class="sc2">//Dangerous codes: because push_back may lead to reallocation and make the argument of push_back invalid.
+</span><span class="sc0">    </span><span class="sc2">//危险的代码: 因为push_back可能导致reallocation然后让push_back的参数是个无效的引用
 </span><span class="sc0">
     </span><span class="sc2">//So do not copy the field to another one in the same root builder until you guarantee it will not reallocate during the copy!
 </span><span class="sc0">    </span><span class="sc2">//所以除非你能保证拷贝时不会发生缓冲区重新分配, 否则不要把已有的数据成员拷贝到同一个根builder的其它数据成员上。
@@ -490,6 +526,39 @@ span {
     </span><span class="sc11">instance5</span><span class="sc10">-&gt;</span><span class="sc11">d</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">make_pair</span><span class="sc10">(</span><span class="sc4">1</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">2.3</span><span class="sc10">));</span><span class="sc0">
     </span><span class="sc11">instance5</span><span class="sc10">-&gt;</span><span class="sc11">e</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">make_pair</span><span class="sc10">(</span><span class="sc4">4</span><span class="sc10">,</span><span class="sc0"> </span><span class="sc4">5.6</span><span class="sc10">));</span><span class="sc0">
     </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance5</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
+
+    </span><span class="sc11">rawbuf_builder</span><span class="sc10">&lt;</span><span class="sc11">test_type3</span><span class="sc10">&lt;</span><span class="sc16">int</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">instance6</span><span class="sc10">;</span><span class="sc0">
+    </span><span class="sc11">rawbuf_writer</span><span class="sc10">&lt;</span><span class="sc11">rawbuf_queue</span><span class="sc10">&lt;</span><span class="sc16">int</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">writer6</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance6</span><span class="sc10">-&gt;</span><span class="sc11">packet_data</span><span class="sc10">&lt;</span><span class="sc11">rawbuf_cmd</span><span class="sc10">::</span><span class="sc11">alloc</span><span class="sc10">&gt;();</span><span class="sc0">
+    </span><span class="sc11">writer6</span><span class="sc10">-&gt;</span><span class="sc11">push_back</span><span class="sc10">(</span><span class="sc4">0</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">writer6</span><span class="sc10">-&gt;</span><span class="sc11">push_back</span><span class="sc10">(</span><span class="sc4">1</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">writer6</span><span class="sc10">-&gt;</span><span class="sc11">push_back</span><span class="sc10">(</span><span class="sc4">2</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">instance6</span><span class="sc10">()-&gt;</span><span class="sc11">encode</span><span class="sc10">(</span><span class="sc11">instance6</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance6</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
+    </span><span class="sc11">rawbuf_queue</span><span class="sc10">&lt;</span><span class="sc16">int</span><span class="sc10">&gt;*</span><span class="sc0"> </span><span class="sc11">myqueue</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance6</span><span class="sc10">()-&gt;</span><span class="sc11">packet_data</span><span class="sc10">();</span><span class="sc0">
+    </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc6">"queue size: "</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc10">*</span><span class="sc11">myqueue</span><span class="sc10">-&gt;</span><span class="sc11">size</span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
+    </span><span class="sc5">for</span><span class="sc0"> </span><span class="sc10">(</span><span class="sc16">const</span><span class="sc0"> </span><span class="sc11">rawbuf_queue_node</span><span class="sc10">&lt;</span><span class="sc16">int</span><span class="sc10">&gt;*</span><span class="sc0"> </span><span class="sc11">it</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">myqueue</span><span class="sc10">-&gt;</span><span class="sc11">begin</span><span class="sc10">();</span><span class="sc0"> </span><span class="sc11">it</span><span class="sc0"> </span><span class="sc10">!=</span><span class="sc0"> </span><span class="sc4">0</span><span class="sc10">;</span><span class="sc0"> </span><span class="sc11">it</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">it</span><span class="sc10">-&gt;</span><span class="sc11">next</span><span class="sc10">())</span><span class="sc0"> </span><span class="sc10">{</span><span class="sc0">
+        </span><span class="sc11">cout</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc10">*</span><span class="sc11">it</span><span class="sc10">-&gt;</span><span class="sc11">value</span><span class="sc10">()</span><span class="sc0"> </span><span class="sc10">&lt;&lt;</span><span class="sc0"> </span><span class="sc11">endl</span><span class="sc10">;</span><span class="sc0">
+    </span><span class="sc10">}</span><span class="sc0">
+        
+    </span><span class="sc11">rawbuf_builder</span><span class="sc10">&lt;</span><span class="sc11">test_type3</span><span class="sc10">&lt;</span><span class="sc11">twitter_msg</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">instance7</span><span class="sc10">;</span><span class="sc0">
+    </span><span class="sc11">rawbuf_writer</span><span class="sc10">&lt;</span><span class="sc11">rawbuf_queue</span><span class="sc10">&lt;</span><span class="sc11">twitter_msg</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">writer7</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">instance7</span><span class="sc10">-&gt;</span><span class="sc11">packet_data</span><span class="sc10">&lt;</span><span class="sc11">rawbuf_cmd</span><span class="sc10">::</span><span class="sc11">alloc</span><span class="sc10">&gt;();</span><span class="sc0">
+    </span><span class="sc10">{</span><span class="sc0">
+        </span><span class="sc11">rawbuf_writer</span><span class="sc10">&lt;</span><span class="sc11">twitter_msg</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">msg_writer</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">writer7</span><span class="sc10">-&gt;</span><span class="sc11">alloc_back</span><span class="sc10">();</span><span class="sc0">
+        </span><span class="sc11">msg_writer</span><span class="sc10">-&gt;</span><span class="sc11">nick_name</span><span class="sc10">(</span><span class="sc6">"yuanzhubi"</span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc11">msg_writer</span><span class="sc10">-&gt;</span><span class="sc11">header_url</span><span class="sc10">(</span><span class="sc6">"https://avatars1.githubusercontent.com/u/25676580?s=460&amp;v=4"</span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc11">msg_writer</span><span class="sc10">-&gt;</span><span class="sc11">twitter_content</span><span class="sc10">(</span><span class="sc6">"The library is strongly recommended!"</span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc11">msg_writer</span><span class="sc10">-&gt;</span><span class="sc11">publish_time</span><span class="sc10">(</span><span class="sc11">rawbuf_uint64</span><span class="sc10">(</span><span class="sc11">time</span><span class="sc10">(</span><span class="sc5">NULL</span><span class="sc10">)));</span><span class="sc0">
+    </span><span class="sc10">}</span><span class="sc0">
+    </span><span class="sc10">{</span><span class="sc0">
+        </span><span class="sc11">rawbuf_writer</span><span class="sc10">&lt;</span><span class="sc11">twitter_msg</span><span class="sc10">&gt;</span><span class="sc0"> </span><span class="sc11">msg_writer</span><span class="sc0"> </span><span class="sc10">=</span><span class="sc0"> </span><span class="sc11">writer7</span><span class="sc10">-&gt;</span><span class="sc11">alloc_back</span><span class="sc10">();</span><span class="sc0">
+        </span><span class="sc11">msg_writer</span><span class="sc10">-&gt;</span><span class="sc11">nick_name</span><span class="sc10">(</span><span class="sc6">"zy498420"</span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc11">msg_writer</span><span class="sc10">-&gt;</span><span class="sc11">header_url</span><span class="sc10">(</span><span class="sc6">"https://avatars0.githubusercontent.com/u/1190063?s=460&amp;v=4"</span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc11">msg_writer</span><span class="sc10">-&gt;</span><span class="sc11">twitter_content</span><span class="sc10">(</span><span class="sc6">"We are improving it!"</span><span class="sc10">);</span><span class="sc0">
+        </span><span class="sc11">msg_writer</span><span class="sc10">-&gt;</span><span class="sc11">publish_time</span><span class="sc10">(</span><span class="sc11">rawbuf_uint64</span><span class="sc10">(</span><span class="sc11">time</span><span class="sc10">(</span><span class="sc5">NULL</span><span class="sc10">)));</span><span class="sc0">
+    </span><span class="sc10">}</span><span class="sc0">
+    </span><span class="sc11">instance7</span><span class="sc10">()-&gt;</span><span class="sc11">encode</span><span class="sc10">(</span><span class="sc11">instance7</span><span class="sc10">);</span><span class="sc0">
+    </span><span class="sc11">OUTPUT_TEST</span><span class="sc10">(</span><span class="sc11">instance7</span><span class="sc10">()-&gt;</span><span class="sc11">output</span><span class="sc10">(</span><span class="sc11">std</span><span class="sc10">::</span><span class="sc11">cout</span><span class="sc10">));</span><span class="sc0">
+
 </span><span class="sc9">#endif
 </span><span class="sc0">
     </span><span class="sc2">//Now we write the date to file

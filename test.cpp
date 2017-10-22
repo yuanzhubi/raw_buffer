@@ -2,6 +2,7 @@
 #include <utility>
 #include <fstream>
 #include <assert.h>
+#include <time.h>
 
 #if defined(RAWBUF_TEST_MODE)
 #include "rawbuffer.h"
@@ -187,6 +188,35 @@ DEF_PACKET_BEGIN(test_type2<ARGS_LIST(T, Array_count_type, true)>)
     ADD_FIELD(std::pair<ARGS_LIST(int, double)>, d) //ARGS_LIST should be used again.
     ADD_FIELD_REQUIRED(std::pair<ARGS_LIST(int, double)>, e)
     ADD_PACKET_ARRAY_ANY(test_type2<int>, f, 3)
+DEF_PACKET_END
+
+//We can use some container type;
+//我们也可以使用一些容器类型
+#include "rawbuffer_container.h"
+
+//Following is a real protocol in work
+template <typename T>
+DEF_PACKET_BEGIN(test_type3)
+    ADD_FIELD_REQUIRED(char, packet_begin_tag) //The packet will begin with '<'
+    ADD_FIELD_REQUIRED(rawbuf_uint32, packet_size)
+    ADD_PACKET(rawbuf_queue<T>, packet_data)
+    ADD_FIELD(char, packet_end_tag)            //The packet end with '>'
+    test_type3() {
+        this->packet_begin_tag('<');
+        this->packet_size(0);
+    }
+
+    void encode(rawbuf_builder<test_type3>& builder) {
+        builder->packet_end_tag('>');
+        builder->packet_size(builder.size());
+    }
+DEF_PACKET_END
+
+DEF_PACKET_BEGIN(twitter_msg)
+    ADD_FIELD_ARRAY(char, nick_name, 32)
+    ADD_FIELD_ARRAY(char, header_url, 64)
+    ADD_FIELD_ARRAY(char, twitter_content, 255)
+    ADD_VAR_INT(rawbuf_uint64, publish_time, 1508661161) //Select the publish time as default time to compress 
 DEF_PACKET_END
 
 #endif 
@@ -449,6 +479,39 @@ int main(){
     instance5->d(std::make_pair(1, 2.3));
     instance5->e(std::make_pair(4, 5.6));
     OUTPUT_TEST(instance5()->output(std::cout));
+
+    rawbuf_builder<test_type3<int> > instance6;
+    rawbuf_writer<rawbuf_queue<int> > writer6 = instance6->packet_data<rawbuf_cmd::alloc>();
+    writer6->push_back(0);
+    writer6->push_back(1);
+    writer6->push_back(2);
+    instance6()->encode(instance6);
+    OUTPUT_TEST(instance6()->output(std::cout));
+    rawbuf_queue<int>* myqueue = instance6()->packet_data();
+    cout << "queue size: " << *myqueue->size() << endl;
+    for (const rawbuf_queue_node<int>* it = myqueue->begin(); it != 0; it = it->next()) {
+        cout << *it->value() << endl;
+    }
+        
+    rawbuf_builder<test_type3<twitter_msg> > instance7;
+    rawbuf_writer<rawbuf_queue<twitter_msg> > writer7 = instance7->packet_data<rawbuf_cmd::alloc>();
+    {
+        rawbuf_writer<twitter_msg> msg_writer = writer7->alloc_back();
+        msg_writer->nick_name("yuanzhubi");
+        msg_writer->header_url("https://avatars1.githubusercontent.com/u/25676580?s=460&v=4");
+        msg_writer->twitter_content("The library is strongly recommended!");
+        msg_writer->publish_time(rawbuf_uint64(time(NULL)));
+    }
+    {
+        rawbuf_writer<twitter_msg> msg_writer = writer7->alloc_back();
+        msg_writer->nick_name("zy498420");
+        msg_writer->header_url("https://avatars0.githubusercontent.com/u/1190063?s=460&v=4");
+        msg_writer->twitter_content("We are improving it!");
+        msg_writer->publish_time(rawbuf_uint64(time(NULL)));
+    }
+    instance7()->encode(instance7);
+    OUTPUT_TEST(instance7()->output(std::cout));
+
 #endif
 
     //Now we write the date to file

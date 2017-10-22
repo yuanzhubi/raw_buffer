@@ -3,6 +3,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <new>
 #include "rawbuffer_alignment.h"
 #include "rawbuffer_varint.h" 
 
@@ -144,6 +145,7 @@ public:
         }
         RAWBUF_T* dp = (RAWBUF_T*)(this->data_ptr + new_offset);
         init_rawbuf_struct(dp);
+        new(dp)RAWBUF_T;
         return dp;
     }
 
@@ -151,8 +153,9 @@ public:
     RAWBUF_T* alloc(RAWBUF_A count, RAWBUF_M* offset_pointer){  
         RAWBUF_T* dp = this->append((RAWBUF_T*)0, count, offset_pointer);
         RAWBUF_T* old_dp = dp;
-        for(size_t i = 0; i < count; ++i,++dp){
+        for(size_t i = 0; i < count; ++i){
             init_rawbuf_struct(dp);
+            new(dp++)RAWBUF_T;
         }
         return old_dp;
     }
@@ -160,11 +163,13 @@ private:
     void operator delete(void* p, size_t the_size); //destructor is not virtual!
 };
 
-template <typename RAWBUF_T>
-struct rawbuf_writer{
+struct rawbuf_writer_data {
     rawbuf_writer_proto* writer;
     size_t offset;
+};
 
+template <typename RAWBUF_T, bool has_rawbuf_writer_result = rawbuf::has_rawbuf_writer_extend<RAWBUF_T>::result >
+struct rawbuf_writer : public rawbuf_writer_data {
     typedef typename RAWBUF_T::template rawbuf_writer_helper<RAWBUF_T, RAWBUF_T::fields_count + 1> helper_type;
     helper_type* operator->() const {
         return (helper_type*)this;
@@ -175,6 +180,10 @@ struct rawbuf_writer{
     operator bool() const{return this->writer != 0;}
 private:
     void operator delete(void* p, size_t the_size); //destructor is not virtual!
+};
+
+template <typename RAWBUF_T>
+struct rawbuf_writer <RAWBUF_T, true> : public rawbuf_writer <RAWBUF_T, false>, public RAWBUF_T::rawbuf_writer_extend_type{
 };
 
 template <typename RAWBUF_T>
@@ -260,9 +269,9 @@ struct rawbuf_builder : public rawbuf_writer_proto, public rawbuf_writer<RAWBUF_
     rawbuf_builder(rawbuf_uint32 init_capcitya = init_capacity){
         this->data_ptr =  (char*)malloc(init_capcitya);
         this->data_size = sizeof(RAWBUF_T);
-        this->data_capacity = init_capcitya;
+        this->data_capacity = init_capcitya;      
         rawbuf_writer_proto::init_rawbuf_struct((RAWBUF_T*)(this->data_ptr));
-
+        new(this->data_ptr)RAWBUF_T;
         this->writer = this;
         this->offset = 0;
     }

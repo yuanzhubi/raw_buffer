@@ -63,6 +63,9 @@ namespace rawbuf{
     template<typename T> two_int is_rawbuf_struct_tester(typename T::rawbuf_struct_type*);
     template<typename T> char is_rawbuf_struct_tester(...);
 
+    template<typename T> two_int has_rawbuf_writer_extend_tester(typename T::rawbuf_writer_extend_type*);
+    template<typename T> char has_rawbuf_writer_extend_tester(...);
+
     template <typename T>
     struct is_rawbuf_struct{
         static const bool result = sizeof(is_rawbuf_struct_tester<T>(0)) != sizeof(char);
@@ -71,6 +74,11 @@ namespace rawbuf{
     template <typename T>
     struct is_raw_struct{
         static const bool result = sizeof(is_struct_tester<T>(0)) != sizeof(char);
+    };
+
+    template <typename T>
+    struct has_rawbuf_writer_extend {
+        static const bool result = sizeof(has_rawbuf_writer_extend_tester<T>(0)) != sizeof(char);
     };
 
     template <rawbuf_uint32 size, rawbuf_uint32 moder = (size % 2)>

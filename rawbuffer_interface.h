@@ -3,8 +3,6 @@
 #define DEF_PACKET_BEGIN(rawbuf_name) \
 struct rawbuf_name : public rawbuf_cmd{ \
 private: \
-    rawbuf_name();\
-    rawbuf_name(const rawbuf_name&);\
     rawbuf_name& operator =(const rawbuf_name&); \
 public:\
     typedef rawbuf_name rawbuf_struct_type; \
@@ -367,10 +365,12 @@ public:\
         static void iterate(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
             typename RAWBUF_This::array_count_type rawbuf_size; \
             rawbuf_input_type* rawbuf_data = this_instance.rawbuf_name(rawbuf_size);\
-            if(rawbuf_size != 0 && func_instance(rawbuf_data, rawbuf_data)) {\
-                for(array_count_type i = 0; i < rawbuf_size; ++i){ \
-                    func_instance(rawbuf_data + i); \
-                }\
+            if(rawbuf_size != 0 ) {\
+                if(func_instance(rawbuf_data, rawbuf_data)){ \
+                    for(typename RAWBUF_This::array_count_type i = 0; i < rawbuf_size; ++i){ \
+                        func_instance(rawbuf_data + i); \
+                    }\
+                } \
             }else{ \
                 func_instance((rawbuf_input_type*)0, 0); \
             } \
@@ -382,10 +382,12 @@ public:\
         static void iterate_with_name(RAWBUF_This& this_instance, RAWBUF_Func& func_instance){ \
             typename RAWBUF_This::array_count_type rawbuf_size; \
             rawbuf_input_type* rawbuf_data = this_instance.rawbuf_name(rawbuf_size);\
-            if(rawbuf_size != 0 && func_instance(rawbuf_data, rawbuf_data, #rawbuf_name)) {\
-                for(typename RAWBUF_This::array_count_type i = 0; i < rawbuf_size; ++i){ \
-                    func_instance(rawbuf_data + i, 0); \
-                }\
+            if(rawbuf_size != 0 ) {\
+                if(func_instance(rawbuf_data, rawbuf_data, #rawbuf_name)){ \
+                    for(typename RAWBUF_This::array_count_type i = 0; i < rawbuf_size; ++i){ \
+                        func_instance(rawbuf_data + i, 0); \
+                    }\
+                } \
             }else{ \
                 func_instance((rawbuf_input_type*)0, 0, #rawbuf_name); \
             } \
@@ -397,9 +399,11 @@ public:\
         static void iterate_with_depth(RAWBUF_This& this_instance, RAWBUF_Func& func_instance, int rawbuf_depth){ \
             typename RAWBUF_This::array_count_type rawbuf_size; \
             rawbuf_input_type* rawbuf_data = this_instance.rawbuf_name(rawbuf_size);\
-            if(rawbuf_size != 0 && func_instance(rawbuf_data, rawbuf_size, #rawbuf_name, rawbuf_depth)) {\
-                for(typename RAWBUF_This::array_count_type i = 0; i < rawbuf_size; ++i){ \
-                    func_instance(rawbuf_data + i, 0, rawbuf_depth + 1); \
+            if(rawbuf_size != 0 ) {\
+                if(func_instance(rawbuf_data, rawbuf_size, #rawbuf_name, rawbuf_depth)){\
+                    for(typename RAWBUF_This::array_count_type i = 0; i < rawbuf_size; ++i){ \
+                        func_instance(rawbuf_data + i, 0, rawbuf_depth + 1); \
+                    }\
                 }\
             }else{ \
                 func_instance((rawbuf_input_type*)0, 0, #rawbuf_name, rawbuf_depth); \
@@ -841,6 +845,7 @@ public:\
             return func_result; \
         }\
         func_result.data_ptr = 0; \
+        func_result.data_real_size = 0; \
         return func_result; \
     } \
     template <typename RAWBUF_T> \
@@ -854,6 +859,7 @@ public:\
             return func_result; \
         }\
         func_result.data_ptr = 0; \
+        func_result.data_real_size = 0; \
         return func_result; \
     } \
 
