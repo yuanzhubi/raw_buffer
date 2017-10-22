@@ -28,6 +28,24 @@ DEF_PACKET_BEGIN(rawbuf_queue)
     template<typename RAWBUF_T>
     struct rawbuf_writer_helper<RAWBUF_T, 2> : protected rawbuf_writer_helper<RAWBUF_T, 1> { //We disable all the pevious method
     public:
+        T* alloc_back() {
+            rawbuf_uint32* pqueue_count = (*this)()->size();
+            if (*pqueue_count == 0) {
+                *pqueue_count = 1;
+                rawbuf_writer<rawbuf_queue_node<T> > data_writer = this->template begin<RAWBUF_T::alloc>();
+                this->real_offset = (char*)(data_writer()) - this->writer->data_ptr;
+                return data_writer()->value();
+            }
+            (*pqueue_count)++;
+            typedef typename rawbuf_writer<rawbuf_queue_node<T> >::helper_type local_helper_type;
+            size_t tmp_offset = this->offset;
+            this->offset = this->real_offset;
+            rawbuf_writer<rawbuf_queue_node<T> > data_writer = ((local_helper_type*)(this))->template next<RAWBUF_T::alloc>();
+            this->real_offset = (char*)(data_writer()) - this->writer->data_ptr;
+            this->offset = tmp_offset;
+            return data_writer()->value();
+        }
+
         void push_back(const T& src) {
             rawbuf_uint32* pqueue_count = (*this)()->size();
             if (*pqueue_count == 0) {
