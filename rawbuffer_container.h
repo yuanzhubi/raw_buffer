@@ -1,5 +1,6 @@
 #if !defined(RAWBUFFER_CONTAINER_H_)
 #define RAWBUFFER_CONTAINER_H_
+#include "rawbuffer.h"
 
 template <typename T, bool is_raw_buf_test_result = rawbuf::is_rawbuf_struct<T>::result >
 DEF_PACKET_BEGIN(rawbuf_queue_node)
@@ -91,6 +92,5 @@ struct rawbuf_queue<T, true> : public rawbuf_queue<T, false> {
         }
     };
 };
-
 
 #endif

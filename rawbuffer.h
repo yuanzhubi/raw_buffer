@@ -51,8 +51,8 @@ inline M rawbuf_get_varint(const T* that, typename T::offset_type filed_tag) {
 }
 
 template<typename T, typename M>
-inline M* rawbuf_get_array_pointer(typename T::array_count_type& the_array_count, const T* that, typename T::offset_type filed_tag, const char* data_end, bool& is_out_of_bound) {
-    is_out_of_bound = true;
+inline M* rawbuf_get_array_pointer(typename T::array_count_type& the_array_count, const T* that, typename T::offset_type filed_tag, const char* data_end, bool& is_not_out_of_bound) {
+    is_not_out_of_bound = true;
     if (that->get_optional_fields_count() > filed_tag) {
         const typename T::offset_type *foffset = that->_.field_offset + T::field_index_begin + filed_tag;
         if (*foffset != 0) {
@@ -63,7 +63,7 @@ inline M* rawbuf_get_array_pointer(typename T::array_count_type& the_array_count
                     return result;
                 }
             }
-            is_out_of_bound = false;     
+            is_not_out_of_bound = false;
         }
     }
     the_array_count = 0;

@@ -140,7 +140,6 @@ namespace rawbuf{
     };
 }
 
-
 /*
 #define RAW_BUF_OUPUT_TEMPLATE(input_type, name) \
     template<typename This, typename M> \
@@ -157,7 +156,6 @@ namespace rawbuf{
     }
 
 #endif
-
 
 #if !defined(RAW_BUF_OUPUT_TEMPLATE_PACKET)
 

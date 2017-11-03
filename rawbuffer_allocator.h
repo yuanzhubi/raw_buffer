@@ -177,6 +177,7 @@ struct rawbuf_writer : public rawbuf_writer_data {
     inline RAWBUF_T& operator *() const {return *(RAWBUF_T*)(this->writer->data_ptr + this->offset);}
     inline RAWBUF_T* operator()() const {return (RAWBUF_T*)(this->writer->data_ptr + this->offset);}
     inline RAWBUF_T* get() const {return (RAWBUF_T*)(this->writer->data_ptr + this->offset);}
+    helper_type& get_writer() const { return *((helper_type*)this); }
     operator bool() const{return this->writer != 0;}
 private:
     void operator delete(void* p, size_t the_size); //destructor is not virtual!

@@ -128,8 +128,6 @@ namespace rawbuf {
         }
     };
 
-   
-
     template <typename T, bool is_64>
     struct rawbuf_varint<T, is_64, false> {
         inline static char* encode(T the_src, char* buf_begin) {

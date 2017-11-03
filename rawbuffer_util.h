@@ -43,7 +43,6 @@ namespace rawbuf{
     template<bool result>
     struct result_check;
 
-
     template<>
     struct result_check<true>{
         typedef int type;

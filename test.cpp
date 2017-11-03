@@ -506,7 +506,7 @@ int main(){
         rawbuf_writer<twitter_msg> msg_writer = writer7->alloc_back();
         msg_writer->nick_name("zy498420");
         msg_writer->header_url("https://avatars0.githubusercontent.com/u/1190063?s=460&v=4");
-        msg_writer->twitter_content("We are improving it!");
+        msg_writer->twitter_content("We are improving it every week!");
         msg_writer->publish_time(rawbuf_uint64(time(NULL)));
     }
     instance7()->encode(instance7);
