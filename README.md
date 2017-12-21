@@ -1,5 +1,5 @@
 # raw_buffer
-raw_buffer can do packet serialization in a raw buffer and allows you to directly visit serialized data without unpacking/parsing like flatbuffer, but you do not need any IDL file and it is much more efficient
+raw_buffer can do packet serialization in a raw buffer and allows you to directly visit serialized data without unpacking/parsing(zero copy) like flatbuffer, but you do not need any IDL file and it is much more efficient
 either in space or speed(supporting POD type as required field!)! You can directly define your data protocol in your cplusplus header file now! It supports forward declared (incomplete) type as optional type, too. C++ supported only till now.
 
 Charactors:
@@ -38,7 +38,7 @@ Portable suggestion:
 See https://yuanzhubi.github.io/raw_buffer/ as example for almost the all api.
 
 
-raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化，也可以直接访问缓冲区内数据而无需解包或解析字段，有更高效的时间和空间效率(POD类型可以当required成员来用)。
+raw_buffer能让你像flatbuffer一样在原始缓冲区内直接完成序列化，也可以直接访问缓冲区内数据而无需解包或解析字段(都是0拷贝)，有更高效的时间和空间效率(POD类型可以当required成员来用)。
 并且方便的多是，你不需要撰写任何IDL或者schema!你可以直接在你的C++头文件里定义你的数据协议了！还支持前向声明的数据类型为可选类型。目前为止仅支持C++
 
 特点：
