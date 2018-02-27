@@ -12,9 +12,9 @@ Charactors:
 
 3. POD struct, POD union are suppoted in packet definition.
 
-4. A node can be reference by one more parent nodes that created ealier(which avoids the ring) to save space.
+4. A node can be referenced by one more parent nodes that created ealier(which avoids the ring) to save space.
 
-5. You can use forward declared packet type or even packet type itself as field type. This function enhances 4（enalbing instrusive list and tree）!
+5. You can use forward declared packet type or even packet type itself as field type. This function enhances 4（enabling instrusive list and tree）!
 
 6. Accurate buffer pre-allocation in packeting, according to evaluate the worst case in compile time.
 
@@ -27,7 +27,7 @@ Charactors:
 
 Portable suggestion:
 
-0.Using int32_t, int16_t insteand of int, short.
+0. Using int32_t, int16_t instead of int, short.
 
 1. Do not use long double. sizeof(long double) is different between compilers.
 
