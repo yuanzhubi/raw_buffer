@@ -403,7 +403,7 @@ int main(){
     //So we need to copy to another builder first.
     rawbuf_builder<test_type1> instance3;
 
-    instance3->copy(*instance2);
+    instance3 = (*instance2);
     instance2->vv(*instance3)->ww<test_type::alloc>()->p(2097152+8);
     //vv.ww.p is assigned!
     OUTPUT_TEST(instance2()->output(std::cout));

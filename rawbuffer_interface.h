@@ -148,6 +148,7 @@ public:\
             next_type::copy(rawbuf_src, rawbuf_packet); \
         } \
     }; \
+    /*get value address*/\
     rawbuf_input_type* rawbuf_name() const { \
         if(this->get_optional_fields_count() > (offset_type)RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name)){ \
             const offset_type *rawbuf_foffset = this->_.field_offset + RAW_BUF_JOIN(rawbuf_tag_optional_, rawbuf_name) + rawbuf_struct_type::field_index_begin; \
@@ -156,6 +157,14 @@ public:\
             }\
         }\
         return 0; \
+    } \
+    /*get value reference, returen default_value if it is not assigned */\
+    const rawbuf_input_type& rawbuf_name(const rawbuf_input_type& default_value) const{ \
+        rawbuf_input_type* result = rawbuf_name(); \
+        if(result != 0){ \
+            return *result; \
+        } \
+        return default_value; \
     } \
     template<typename RAWBUF_T> \
     struct rawbuf_writer_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name)> : public rawbuf_writer_helper<RAWBUF_T, RAW_BUF_JOIN(rawbuf_tag_, rawbuf_name) - 1 >{\
@@ -205,6 +214,10 @@ public:\
                 return 0; \
             }\
             return rawbuf_data; \
+        } \
+        const rawbuf_input_type& rawbuf_name(const rawbuf_input_type& default_value) { \
+            rawbuf_input_type* result = rawbuf_name(); \
+            return result != 0 ? *result : default_value; \
         } \
         template<rawbuf_cmd::check_cmd RAWBUF_cmd> \
         const char* check(){ \

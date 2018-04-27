@@ -29,8 +29,10 @@ struct rawbuf_cmd : public rawbuf_config {
     enum check_cmd {
         check_packet = 0
     };
+    
+    typedef int check_graph;
 
-    //visit_c_string_cmd
+    //visit c_string command.
     typedef int c_str;
 
     //We can "reference" a packet with higher address.

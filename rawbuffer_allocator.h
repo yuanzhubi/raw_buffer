@@ -268,7 +268,7 @@ struct rawbuf_builder : public rawbuf_writer_proto, public rawbuf_writer<RAWBUF_
     static const rawbuf_uint32 init_capacity =  rawbuf::rawbuf_property<RAWBUF_T>::size_result + align_cost ;
 
     rawbuf_builder(rawbuf_uint32 init_capcitya = init_capacity){
-        this->data_ptr =  (char*)malloc(init_capcitya);
+        this->data_ptr = (char*)malloc(init_capcitya);
         this->data_size = sizeof(RAWBUF_T);
         this->data_capacity = init_capcitya;      
         rawbuf_writer_proto::init_rawbuf_struct((RAWBUF_T*)(this->data_ptr));
@@ -276,11 +276,39 @@ struct rawbuf_builder : public rawbuf_writer_proto, public rawbuf_writer<RAWBUF_
         this->writer = this;
         this->offset = 0;
     }
+    
+    rawbuf_builder(const RAWBUF_T &src, size_t src_size = 0){
+        if(src_size < init_capacity){
+            src_size = init_capacity;
+        }
+        this->data_ptr = (char*)malloc(src_size);
+        this->data_size = sizeof(RAWBUF_T);
+        this->data_capacity = src_size;      
+        rawbuf_writer_proto::init_rawbuf_struct((RAWBUF_T*)(this->data_ptr));
+        new(this->data_ptr)RAWBUF_T;
+        this->writer = this;
+        this->offset = 0;
+        (*this)->copy(src);
+    }
+    
+    rawbuf_builder& operator = (const RAWBUF_T &src){
+        free(this->data_ptr);
+        this->data_ptr = (char*)malloc(init_capacity);
+        this->data_size = sizeof(RAWBUF_T);
+        this->data_capacity = init_capacity;      
+        rawbuf_writer_proto::init_rawbuf_struct((RAWBUF_T*)(this->data_ptr));
+        new(this->data_ptr)RAWBUF_T;
+        this->writer = this;
+        this->offset = 0;
+        (*this)->copy(src);
+        return *this;
+    }
 
     ~rawbuf_builder(){
         free(this->data_ptr);
     }
 private:
+
     rawbuf_builder(const rawbuf_builder &);                 //disable copy
     rawbuf_builder& operator = (const rawbuf_builder &);    //disable assignment
 };
